@@ -142,7 +142,6 @@ if __name__ == '__main__':
     
     for i in trange(len(anno_paths)):
 
-        print(i)
         with open(anno_paths[i], 'r') as fin:
             anno = json.load(fin)
         if 'video_path' in anno:
