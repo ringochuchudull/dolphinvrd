@@ -9,6 +9,8 @@ import os, glob, json
 import cv2
 from tqdm import tqdm
 
+import numpy as np
+
 def read_video(path):
     cap = cv2.VideoCapture(path, cv2.CAP_FFMPEG)
     if not cap.isOpened():
@@ -31,7 +33,7 @@ def main():
     data_path = parse_aug.data_path
     print(f'Your path to data is: {data_path}')
 
-    train_test_set = 'test'
+    train_test_set = 'train'
 
     #Json location
     all_json_annotation = sorted(glob.glob(os.path.join(data_path, train_test_set ,'*.json')))
@@ -74,8 +76,21 @@ def main():
         for idx, f in zip(range(1, len(video_frames)+1), video_frames):
             cv2.imwrite(os.path.join(video_destination, str(idx).zfill(6)+'.jpeg'), f)
 
-        input()
+        # Visualise
+        ratio = 720.0 / height
+        boundary = 20
+        size = int(round(width * ratio)) + 2 * boundary, int(round(height * ratio)) + 2 * boundary
+        for i in range(anno['frame_count']):
+            background = np.zeros((size[1], size[0], 3), dtype=np.uint8)
+            background[boundary:size[1] - boundary, boundary:size[0] - boundary] = cv2.resize(video_frames[i], (
+            size[0] - 2 * boundary, size[1] - 2 * boundary))
+            video_frames[i] = background
 
+        '''
+        for i in range(anno['frame_count']):
+            cv2.imshow('does it matter?v2', video_frames[i])
+            cv2.waitKey(2)
+        '''
         '''
         print(height, width)
         print(fps, frame_count)
