@@ -10,7 +10,7 @@ import ours.helper.vision.utils as utils
 
 class GeneralLoader(torch.utils.data.Dataset):
 
-    def __init__(self, data_path, set, transforms=None):
+    def __init__(self, data_path, set, transforms=None, _vis_threshold=0.2):
 
         # load all image files, sorting them to
         # ensure that they are aligned
@@ -24,7 +24,26 @@ class GeneralLoader(torch.utils.data.Dataset):
         self.all_json_anno = list(sorted(glob.glob(path_to_json)))
         assert len(self.all_json_anno) != 0
 
-        input('xhwxk')
+        for idx, js in enumerate(self.all_json_anno):
+            with open(js, 'r') as l:
+                info = l.read()
+            info = json.loads(info)
+
+            print(info['video_id'])
+            video_id = info['video_id']
+
+            video_frame_path = glob.glob(os.path.join(self.root, set, video_id, '*.jpeg'))
+            assert len(video_frame_path) == info['frame_count'], 'Frame Count and actuall count mismatch '
+
+            # Load image and Data object
+
+
+        for jsinfo in self.all_json_anno:
+            with open(jsinfo, 'r') as l:
+                labels = l.read()
+            labels = json.loads(labels)
+
+
         for video_path in self.videos:
 
             # read configure.JSON

@@ -40,7 +40,7 @@ import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 from ours.helper.parser import GeneralParser
-from ours.dataloader import generalloader
+from ours.dataloader.generalloader import GeneralLoader
 
 import ours.helper.vision.transforms as T
 from ours.helper.vision.engine import train_one_epoch, evaluate
@@ -108,14 +108,10 @@ if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
 
-    train_set = generalloader(data_path =parse_options.data_path,
+    train_set = GeneralLoader(data_path=parse_options.data_path,
                               set='train',
-                              tranforms=get_transform(train=True)
+                              transforms=get_transform(train=True))
 
-    dataset = DOLPHIN(data_path=parse_options.data_path,
-                      set='Train',
-                      mode='general',
-                      transforms=get_transform(train=True))
 
 
     print(f'Length of Train: {len(dataset)}')
