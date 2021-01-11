@@ -40,7 +40,7 @@ import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 from ours.helper.parser import GeneralParser
-from ours.dataloader.generalloader import GeneralLoader
+from ours.dataloader.generalloader import VideoVRDParser
 
 import ours.helper.vision.transforms as T
 from ours.helper.vision.engine import train_one_epoch, evaluate
@@ -71,7 +71,7 @@ def get_detection_model(num_classes):
     # replace the pre-trained head with a new one
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
-    model.roi_heads.nms_thresh = 0.42
+    model.roi_heads.nms_thresh = 0.45
 
     return model
 
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
 
-    train_set = GeneralLoader(data_path=parse_options.data_path,
+    train_set = VideoVRDParser(data_path=parse_options.data_path,
                               set='train',
                               transforms=get_transform(train=True))
 

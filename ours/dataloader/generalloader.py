@@ -19,6 +19,32 @@ class GeneralLoader(torch.utils.data.Dataset):
 
         self.root = data_path
         assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
+    @property
+    def num_classes(self):
+        return len(self._classes)
+
+    def __getitem__(self, idx):
+        return None
+
+    def __len__(self):
+        return len(self._img_paths)
+
+    def __str__(self):
+        return 'This is General Detection LOADER'
+
+class VideoVRDParser(GeneralLoader):
+
+    def __init__(self, data_path, set, transforms=None, _vis_threshold=0.2):
+        super(GeneralLoader, self).__init__()
+        # load all image files, sorting them to
+        # ensure that they are aligned
+        self.video_names = []
+        self._videos_frames = []
+        self._bbs_info = []
+        self.classes = []
+
+        self.root = data_path
+        assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
         path_to_json = os.path.join(self.root, set, '*.json')
 
         self.all_json_anno = list(sorted(glob.glob(path_to_json)))
@@ -29,46 +55,26 @@ class GeneralLoader(torch.utils.data.Dataset):
                 info = l.read()
             info = json.loads(info)
 
-            print(info['video_id'])
             video_id = info['video_id']
 
             video_frame_path = glob.glob(os.path.join(self.root, set, video_id, '*.jpeg'))
-            assert len(video_frame_path) == info['frame_count'], 'Frame Count and actuall count mismatch '
+            assert len(video_frame_path) == info['frame_count'], 'Frame Count and actual count mismatch '
 
-            # Load image and Data object
-
-
-        for jsinfo in self.all_json_anno:
-            with open(jsinfo, 'r') as l:
-                labels = l.read()
-            labels = json.loads(labels)
+            self.video_names.append(video_id)
+            self._videos_frames.append(video_frame_path)
 
 
-        for video_path in self.videos:
-
-            # read configure.JSON
-            with open(os.path.join(video_path, 'configuration.json'), 'r') as l:
-                labels = l.read()
-            labels = json.loads(labels)
-
-            # A list of images path
-            imgpaths = sorted(glob.glob(os.path.join(video_path, self._img_container, '*')))
-            _temporary_bbs = []
-
-            for frame in imgpaths:
-                _, frame_name = os.path.split(frame)
-                _temporary_bbs.append(labels[frame_name])
-
-            assert len(imgpaths) == len(_temporary_bbs)
-            self._img_paths += imgpaths
-            self._bbs_info += _temporary_bbs
-
-        assert len(self._img_paths) == len(self._bbs_info)
-
-        if mode.lower() == 'specific':
-            self._classes = ('background', 'd1', 'd2', 'd3', 'd4', 'pipe')
-        else:
-            self._classes = ('background', 'dolphin', 'pipe')
+            '''
+            # Number of frames
+            print(f'Number of frames: {info["frame_count"]}')
+            # Object Detector
+            print(f'Length of trajectories: {len(info["trajectories"])}')
+            # Relations
+            print(f'Relation Instances:\n {info["relation_instances"]}')
+            # Subject/Object Class
+            print(f'Subject Object: \n {info["subject/objects"]}')
+            '''
+            input()
 
         self._vis_threshold = vis_threshold
         self.transforms = transforms
@@ -152,6 +158,7 @@ class GeneralLoader(torch.utils.data.Dataset):
 
     def __str__(self):
         return 'This is General Detection LOADER'
+
 
 class DOLPHIN(torch.utils.data.Dataset):
 
