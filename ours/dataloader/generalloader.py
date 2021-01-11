@@ -60,9 +60,13 @@ class VideoVRDParser(GeneralLoader):
             video_frame_path = glob.glob(os.path.join(self.root, set, video_id, '*.jpeg'))
             assert len(video_frame_path) == info['frame_count'], 'Frame Count and actual count mismatch '
 
+            # Only keep the frames with Boxes
+            temp_traj = info['trajectories']
+            video_frame_path = video_frame_path[0:len(temp_traj)]
+
             self.video_names.append(video_id)
             self._videos_frames.append(video_frame_path)
-
+            self._bbs_info.append(info['trajectories'])
 
             '''
             # Number of frames
@@ -74,9 +78,8 @@ class VideoVRDParser(GeneralLoader):
             # Subject/Object Class
             print(f'Subject Object: \n {info["subject/objects"]}')
             '''
-            input()
 
-        self._vis_threshold = vis_threshold
+        self._vis_threshold = _vis_threshold
         self.transforms = transforms
 
     @property
