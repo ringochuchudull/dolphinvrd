@@ -40,7 +40,7 @@ import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 from ours.helper.parser import GeneralParser
-from ours.dataloader.generalloader import VideoVRDParser
+from ours.dataloader.vidvrdloader import VideoVRDLoader
 
 import ours.helper.vision.transforms as T
 from ours.helper.vision.engine import train_one_epoch, evaluate
@@ -108,14 +108,15 @@ if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
 
-    train_set = VideoVRDParser(data_path=parse_options.data_path,
+    train_set = VideoVRDLoader(data_path=parse_options.data_path,
                               set='train',
                               transforms=get_transform(train=True))
 
 
 
-    print(f'Length of Train: {len(dataset)}')
-    print(f'Length of Test: {len(dataset_test)}')
+    print(f'Length of Train: {len(train_set)}')
+    #print(f'Length of Test: {len(dataset_test)}')
+
 
     '''
     # split the dataset in train and test set

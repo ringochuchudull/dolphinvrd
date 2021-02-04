@@ -3,81 +3,82 @@ import glob
 import torch
 import json
 from PIL import Image
+import numpy as np
 
-import ours.helper.vision.transforms as T
-from ours.helper.vision.engine import train_one_epoch, evaluate
-import ours.helper.vision.utils as utils
+from .generalloader import GeneralLoader
 
-class GeneralLoader(torch.utils.data.Dataset):
+class VideoVRDLoader(GeneralLoader):
 
     def __init__(self, data_path, set, transforms=None, _vis_threshold=0.2):
-
+        super(GeneralLoader, self).__init__()
         # load all image files, sorting them to
         # ensure that they are aligned
-        self._img_paths = []
+        self.video_names = []
+        self._videos_frames = []
         self._bbs_info = []
+        self.classes = []
 
         self.root = data_path
         assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
-    @property
-    def num_classes(self):
-        return len(self._classes)
+        path_to_json = os.path.join(self.root, set, '*.json')
 
-    def __getitem__(self, idx):
-        return None
+        self.all_json_anno = list(sorted(glob.glob(path_to_json)))
+        assert len(self.all_json_anno) != 0
 
-    def __len__(self):
-        return len(self._img_paths)
+        for idx, js in enumerate(self.all_json_anno):
+            print(idx)
+            with open(js, 'r') as l:
+                info = l.read()
+            info = json.loads(info)
 
-    def __str__(self):
-        return 'This is General Detection LOADER'
+            video_id = info['video_id']
+
+            video_frame_path = glob.glob(os.path.join(self.root, set, video_id, '*.jpeg'))
+            assert len(video_frame_path) == info['frame_count'], 'Frame Count and actual count mismatch '
+
+            # Only keep the frames with Boxes
+            temp_traj = info['trajectories']
+            video_frame_path = video_frame_path[0:len(temp_traj)]
+
+            self.video_names.append(video_id)
+            self._videos_frames.append(video_frame_path)
+            self._bbs_info.append(info['trajectories'])
+
+            objid = [s_o['category'] for s_o in info["subject/objects"]]
+
+            '''
+            print(objid); input()
+            # Number of frames
+            print(f'Number of frames: {info["frame_count"]}')
+            # Object Detector
+            print(f'Length of trajectories: and {len(info["trajectories"])}')
+            print(f'Length of trajectories: and ')
+            '''
+
+            # One Video
+
+            _bb, _cls = [], []
+            for idx, traj in enumerate(info["trajectories"]):
+                _bb_frame, _cls_frame = [], []
+
+                if np.equal(len(traj), 0):
+                    print(f'{idx} has no bb')
+                for t in traj:
+                    print(t)
+                    _bb_frame.append([t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]])
+                    _cls_frame.append([t["bbox"]["xmin"]])
+            input()
+
+            # Relations
+            print(f'Relation Instances:\n {info["relation_instances"]}')
+            # Subject/Object Class
+            print(f'Subject Object: \n {info["subject/objects"]}')
 
 
-class DOLPHIN(torch.utils.data.Dataset):
 
-    def __init__(self, data_path, set, mode='general', vis_threshold=0.2, transforms=None):
+            input()
 
-        # load all image files, sorting them to
-        # ensure that they are aligned
-        self._img_paths = []
-        self._bbs_info = []
-
-        self.root = data_path
-        self._img_container = 'images' if set is 'Train' else 'images2'
-
-        assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
-
-        path_to_videos = os.path.join(self.root, set, '*')
-        self.videos = list(sorted(glob.glob(path_to_videos)))
-        assert len(self.videos) != 0
-
-        for video_path in self.videos:
-
-            # read configure.JSON
-            with open(os.path.join(video_path, 'configuration.json'), 'r') as l:
-                labels = l.read()
-            labels = json.loads(labels)
-
-            # A list of images path
-            imgpaths = sorted(glob.glob(os.path.join(video_path, self._img_container, '*')))
-            _temporary_bbs = []
-
-            for frame in imgpaths:
-                _, frame_name = os.path.split(frame)
-                _temporary_bbs.append(labels[frame_name])
-
-            assert len(imgpaths) == len(_temporary_bbs)
-            self._img_paths += imgpaths
-            self._bbs_info += _temporary_bbs
-
-        assert len(self._img_paths) == len(self._bbs_info)
-
-        if mode.lower() == 'specific':
-            self._classes = ('background', 'd1', 'd2', 'd3', 'd4', 'pipe')
-        else:
-            self._classes = ('background', 'dolphin', 'pipe')
-
-        self._vis_threshold = vis_threshold
+        self._vis_threshold = _vis_threshold
         self.transforms = transforms
 
     @property
@@ -158,4 +159,4 @@ class DOLPHIN(torch.utils.data.Dataset):
         return len(self._img_paths)
 
     def __str__(self):
-        return 'This is DOLPHIN DETECTION LOADER'
+        return 'This is General Detection LOADER'

@@ -128,6 +128,5 @@ class GeneralParser:
 
 
 if __name__ == '__main__':
-
 	testLoader = GeneralParser()
 	print(testLoader.parse())
