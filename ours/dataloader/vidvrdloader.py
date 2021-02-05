@@ -44,8 +44,6 @@ class VideoVRDLoader(GeneralLoader):
             self._videos_frames.append(video_frame_path)
             self._bbs_info.append(info['trajectories'])
 
-            objid = [s_o['category'] for s_o in info["subject/objects"]]
-
             '''
             print(objid); input()
             # Number of frames
@@ -56,7 +54,7 @@ class VideoVRDLoader(GeneralLoader):
             '''
 
             # One Video
-
+            this_objid = [s_o['category'] for s_o in info["subject/objects"]]
             _bb, _cls = [], []
             for idx, traj in enumerate(info["trajectories"]):
                 _bb_frame, _cls_frame = [], []
@@ -66,9 +64,9 @@ class VideoVRDLoader(GeneralLoader):
                 for t in traj:
                     print(t)
                     _bb_frame.append([t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]])
-                    _cls_frame.append([t["bbox"]["xmin"]])
-            input()
+                    _cls_frame.append(this_objid[t["tid"]])
 
+            print(_bb, _cls)
             # Relations
             print(f'Relation Instances:\n {info["relation_instances"]}')
             # Subject/Object Class
