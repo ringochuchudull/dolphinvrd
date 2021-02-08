@@ -16,7 +16,9 @@ class VideoVRDLoader(GeneralLoader):
         self.video_names = []
         self._videos_frames = []
         self._bbs_info = []
-        self.classes = []
+        self._classes = []
+
+        self.total_classes = []
 
         self.root = data_path
         assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
@@ -54,27 +56,27 @@ class VideoVRDLoader(GeneralLoader):
             '''
 
             # One Video
-            this_objid = [s_o['category'] for s_o in info["subject/objects"]]
-            _bb, _cls = [], []
+
+            this_objid = { so["tid"]:so["category"] for so in info["subject/objects"]}
+
+            _bb, _cls, _rel = [], [], []
             for idx, traj in enumerate(info["trajectories"]):
-                _bb_frame, _cls_frame = [], []
 
                 if np.equal(len(traj), 0):
-                    print(f'{idx} has no bb')
-                for t in traj:
-                    print(t)
-                    _bb_frame.append([t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]])
-                    _cls_frame.append(this_objid[t["tid"]])
+                    _bb.append([-1, -1, -1, -1])
+                    _cls.append(-1)
 
-            print(_bb, _cls)
+                for t in traj:
+                    _bb.append([t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]])
+                    _cls.append(this_objid[t["tid"]])
+
+            self._bbs_info.append(_bb)
+            self._classes.append(_cls)
+
             # Relations
             print(f'Relation Instances:\n {info["relation_instances"]}')
             # Subject/Object Class
             print(f'Subject Object: \n {info["subject/objects"]}')
-
-
-
-            input()
 
         self._vis_threshold = _vis_threshold
         self.transforms = transforms
