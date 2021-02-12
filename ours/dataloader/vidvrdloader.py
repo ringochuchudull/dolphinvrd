@@ -13,10 +13,12 @@ class VideoVRDLoader(GeneralLoader):
         super(GeneralLoader, self).__init__()
         # load all image files, sorting them to
         # ensure that they are aligned
-        self.video_names = []
-        self._videos_frames = []
+        self.video_names = []       # Name [name1, name2 ... name_n]
+        self._videos_frames = []    # Video frames path [ [video1 frames1]... [vidoo frames n] ]
+
         self._bbs_info = []
         self._classes = []
+        self._classes_info = []
 
         self.total_classes = []
 
@@ -28,38 +30,25 @@ class VideoVRDLoader(GeneralLoader):
         assert len(self.all_json_anno) != 0
 
         for idx, js in enumerate(self.all_json_anno):
-            print(idx)
             with open(js, 'r') as l:
                 info = l.read()
             info = json.loads(info)
 
             video_id = info['video_id']
-
             video_frame_path = glob.glob(os.path.join(self.root, set, video_id, '*.jpeg'))
             assert len(video_frame_path) == info['frame_count'], 'Frame Count and actual count mismatch '
 
             # Only keep the frames with Boxes
-            temp_traj = info['trajectories']
-            video_frame_path = video_frame_path[0:len(temp_traj)]
+            video_frame_path = video_frame_path[0:len(info['trajectories'])]
 
             self.video_names.append(video_id)
             self._videos_frames.append(video_frame_path)
-            self._bbs_info.append(info['trajectories'])
-
-            '''
-            print(objid); input()
-            # Number of frames
-            print(f'Number of frames: {info["frame_count"]}')
-            # Object Detector
-            print(f'Length of trajectories: and {len(info["trajectories"])}')
-            print(f'Length of trajectories: and ')
-            '''
 
             # One Video
-
-            this_objid = { so["tid"]:so["category"] for so in info["subject/objects"]}
-
-            _bb, _cls, _rel = [], [], []
+            this_objid = {so["tid"]:so["category"] for so in info["subject/objects"]}
+            _bb, _cls = [], []
+            _rel = [[] for _ in range(len(info['trajectories']))]
+            
             for idx, traj in enumerate(info["trajectories"]):
 
                 if np.equal(len(traj), 0):
@@ -72,11 +61,16 @@ class VideoVRDLoader(GeneralLoader):
 
             self._bbs_info.append(_bb)
             self._classes.append(_cls)
+            self._classes_info.append(this_objid)
 
             # Relations
             print(f'Relation Instances:\n {info["relation_instances"]}')
-            # Subject/Object Class
-            print(f'Subject Object: \n {info["subject/objects"]}')
+
+            _rel = [[] for _ in range(len(info['trajectories']))]
+            for ri in info["relation_instances"]:
+                start, end = ri["begin_fid"], end
+
+
 
         self._vis_threshold = _vis_threshold
         self.transforms = transforms
