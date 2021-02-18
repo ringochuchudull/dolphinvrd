@@ -4,19 +4,27 @@ Modified from: https://github.com/RaivoKoot/Video-Dataset-Loading-Pytorch
 
 import os
 import glob
+from torchvision import transforms
 import torch
 import json
 from PIL import Image
 import numpy as np
 
+
 from .generalloader import GeneralLoader
 
 class VideoVRDLoader(GeneralLoader):
 
-    def __init__(self, data_path, set, transforms=None, _vis_threshold=0.2):
+    def __init__(self, data_path,
+                 frames_per_segment: int = 1,
+                 imagefile_template: str='{:06d}.jpg',
+                 transforms=None,
+                 _vis_threshold=0.2):
+
         super(GeneralLoader, self).__init__()
-        # load all image files, sorting them to
-        # ensure that they are aligned
+
+        self._frame_per_segment = frames_per_segment
+        self.imagefile_template = imagefile_template
 
         self.video_names = []       # Name [name1, name2 ... name_n]
         self._videos_frames = []    # Video frames path [ [video1 frames1]... [vidoo frames n] ]
@@ -26,7 +34,6 @@ class VideoVRDLoader(GeneralLoader):
         self._classes_info = []
 
         self._relation_instace = []
-
         #self.total_classes = []
 
         self.root = data_path
@@ -84,79 +91,14 @@ class VideoVRDLoader(GeneralLoader):
 
     def __getitem__(self, idx):
 
-        img_path = self._img_paths[idx]
-        img = Image.open(img_path).convert("RGB")
 
-        bbinfos = self._bbs_info[idx]
-        num_objs = len(bbinfos)
-
-        boxes = []
-        labels = []
-
-        for i in range(num_objs):
-
-            this_config = bbinfos[i]
-            # Sort out the bounding boxes first
-            tl, tr = this_config['Bounding Box left'], this_config['Bounding Box top']
-            height, width = this_config['Bounding box height'], this_config['Bounding box width']
-            xmin, ymin, xmax, ymax = tl, tr - height, tl + width, tr
-            boxes.append([xmin, ymin, xmax, ymax])
-
-            # Sort out the label after
-            this_id = this_config['Identity']
-
-            if len(self._classes) == 3:  # General Mode
-                if this_id in ['Angelo', 'Toto', 'Anson', 'Ginsan']:
-                    labels.append(1)
-                elif this_id in ['Pipe']:
-                    labels.append(2)
-                else:
-                    pass
-
-            elif len(self._classes) == 6:  # Specific Mode
-
-                if this_id is 'Angelo':
-                    labels.append(1)
-                elif this_id is 'Toto':
-                    labels.append(2)
-                elif this_id is 'Anson':
-                    labels.append(3)
-                elif this_id is 'Ginsan':
-                    labels.append(4)
-                elif this_id is 'Pipe':
-                    labels.append(5)
-                else:
-                    pass
-            else:
-                raise Exception  # Error
-
-        assert len(boxes) == len(labels)
-        boxes = torch.as_tensor(boxes, dtype=torch.float32)
-        labels = torch.as_tensor(labels, dtype=torch.int64)
-
-        image_id = torch.tensor([idx])
-        area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
-
-        # suppose all instances are not crowd
-        iscrowd = torch.zeros((num_objs,), dtype=torch.int64)
-
-        target = {}
-        target["boxes"] = boxes
-        target["labels"] = labels
-        target["image_id"] = image_id
-        target["area"] = area
-        target["iscrowd"] = iscrowd
-
-        if self.transforms is not None:
-            img, target = self.transforms(img, target)
-
-        return img, target
+        return None
 
     def __len__(self):
-        return len(self._img_paths)
+        return len(self.video_names)
 
     def __str__(self):
-        return 'This is General Detection LOADER'
+        return 'This is VideoVRD loader'
 
 
 class ImglistToTensor(torch.nn.Module):
