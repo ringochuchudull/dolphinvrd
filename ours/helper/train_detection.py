@@ -115,7 +115,9 @@ if __name__ == '__main__':
 
 
     print(f'Length of Train: {len(train_set)}')
-    #print(f'Length of Test: {len(dataset_test)}')
+
+    a = train_set[2]
+    print(a)
 
 
     '''

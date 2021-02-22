@@ -1,6 +1,7 @@
 '''
 Modified from: https://github.com/RaivoKoot/Video-Dataset-Loading-Pytorch
 '''
+from __future__ import print_function, division
 
 import os
 import glob
@@ -16,7 +17,8 @@ from .generalloader import GeneralLoader
 class VideoVRDLoader(GeneralLoader):
 
     def __init__(self, data_path,
-                 frames_per_segment: int = 1,
+                 set='train',
+                 frames_per_segment: int = 5,
                  imagefile_template: str='{:06d}.jpg',
                  transforms=None,
                  _vis_threshold=0.2):
@@ -89,10 +91,16 @@ class VideoVRDLoader(GeneralLoader):
     def num_classes(self):
         return len(self._classes)
 
+    def _load_frames(self, frames):
+        return [Image.open(f) for f in frames]
+
+
     def __getitem__(self, idx):
 
+        record = self._load_frames(self._videos_frames[idx])
+        
 
-        return None
+        return record
 
     def __len__(self):
         return len(self.video_names)
