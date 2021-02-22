@@ -98,7 +98,9 @@ class VideoVRDLoader(GeneralLoader):
     def __getitem__(self, idx):
 
         record = self._load_frames(self._videos_frames[idx])
-        
+
+        if transforms:
+            pass
 
         return record
 
