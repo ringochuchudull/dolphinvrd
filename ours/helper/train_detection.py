@@ -41,10 +41,13 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 from ours.helper.parser import GeneralParser
 from ours.dataloader.vidvrdloader import VideoVRDLoader
+from ours.dataloader.transformFile import ImglistToTensor
+
 
 import ours.helper.vision.transforms as T
 from ours.helper.vision.engine import train_one_epoch, evaluate
 import ours.helper.vision.utils as utils
+
 
 
 def get_instance_segmentation_model_v2(num_classes):
