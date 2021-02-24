@@ -36,7 +36,6 @@ class VideoVRDLoader(GeneralLoader):
         self._classes_info = []
 
         self._relation_instace = []
-        #self.total_classes = []
 
         self.root = data_path
         assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
