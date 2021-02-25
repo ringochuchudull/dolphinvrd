@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     train_set = VideoVRDLoader(data_path=parse_options.data_path,
                               set='train',
-                              transforms=get_transform(train=True))
+                              transforms=None)
 
 
 

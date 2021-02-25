@@ -1,5 +1,4 @@
-import torchvision
-import ours.helper.vision.transforms as T
+from torchvision import transforms
 import torch
 
 def get_transform(train):
@@ -28,4 +27,4 @@ class ImglistToTensor(torch.nn.Module):
         Returns:
             tensor of size ``NUM_IMAGES x CHANNELS x HEIGHT x WIDTH``
         """
-        return torch.stack([transforms.funct
+        return torch.stack([transforms.functional.to_tensor(pic) for pic in img_list])

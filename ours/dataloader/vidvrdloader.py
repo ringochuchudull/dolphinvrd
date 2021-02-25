@@ -5,7 +5,7 @@ from __future__ import print_function, division
 
 import os
 import glob
-from torchvision import transforms
+from torchvision import transforms as T
 import torch
 import json
 from PIL import Image
@@ -30,13 +30,16 @@ class VideoVRDLoader(GeneralLoader):
 
         self.video_names = []       # Name [name1, name2 ... name_n]
         self._videos_frames = []    # Video frames path [ [video1 frames1]... [vidoo frames n] ]
-
         self._bbs_info = []
         self._classes = []
         self._classes_info = []
-
         self._relation_instace = []
 
+        self.transforms = transforms
+
+        # # # # # # # # # # #
+        # Start processing #
+        # # # # # # # # # # #
         self.root = data_path
         assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
         path_to_json = os.path.join(self.root, set, '*.json')
@@ -97,11 +100,22 @@ class VideoVRDLoader(GeneralLoader):
     def __getitem__(self, idx):
 
         record = self._load_frames(self._videos_frames[idx])
+        bbox = self._bbs_info[idx]
+        cls = self._classes[idx]
+        clsinfo = self._classes_info[idx]
+        relins = self._relation_instace[idx]
 
-        if transforms:
-            pass
+        # Covert to Files
+        ImtoTensor = ImglistToTensor()
+        record = ImtoTensor(record)
 
-        return record
+        if self.transforms is not None:
+            transformsList = [t for t in self.transforms]
+            transformFunc = T.Compose(transformsList)
+
+        blob = {"record": record, "bbox": bbox, "cls": cls, "clsinfo": clsinfo, "relins": relins}
+
+        return blob
 
     def __len__(self):
         return len(self.video_names)
@@ -126,4 +140,4 @@ class ImglistToTensor(torch.nn.Module):
         Returns:
             tensor of size ``NUM_IMAGES x CHANNELS x HEIGHT x WIDTH``
         """
-        return torch.stack([transforms.functional.to_tensor(pic) for pic in img_list])
+        return torch.stack([T.functional.to_tensor(pic) for pic in img_list])
