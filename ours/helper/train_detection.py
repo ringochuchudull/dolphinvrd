@@ -115,80 +115,9 @@ if __name__ == '__main__':
                               set='train',
                               transforms=None)
 
-
-
-    print(f'Length of Train: {len(train_set)}')
+    print(str(train_set))
 
     a = train_set[2]
-    print(a)
+    print(a.keys())
 
-
-    '''
-    # split the dataset in train and test set
-    torch.manual_seed(1)
-    indices = torch.randperm(len(dataset)).tolist()
-    dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
-    '''
-
-    '''Debug
-    print(dataset[123])
-    input()
-    print(dataset_test[600])
-    input()
-    '''
-
-    # define training and validation data loaders
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=4, shuffle=True, num_workers=4,
-        collate_fn=utils.collate_fn)
-
-    data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=1, shuffle=False, num_workers=4,
-        collate_fn=utils.collate_fn)
-
-    print(f'Length of Train: {len(data_loader)}')
-    print(f'Length of Test: {len(data_loader_test)}')
-
-    device = None
-    if (dp_options.device.lower() in ['cuda', 'gpu']) and torch.cuda.is_available():
-        device = torch.device('cuda')
-    elif torch.cuda.is_available():
-        device = torch.device('cuda')
-    else:
-        device = torch.device('cpu')
-
-    # if mode = general then 3, if mode = specific then 5
-    num_classes = 3
-    # get the model using our helper function
-    # model = get_instance_segmentation_model_v2(num_classes)
-    model = get_detection_model(num_classes)
-    # move model to the right device
-    model.to(device)
-
-    # construct an optimizer
-    params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=0.005,
-                                momentum=0.9, weight_decay=0.0005)
-
-    # and a learning rate scheduler which decreases the learning rate by
-    # 10x every 3 epochs
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                   step_size=3,
-                                                   gamma=0.1)
-
-    num_epochs = 51
-    for epoch in range(num_epochs):
-        # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
-        # update the learning rate
-        lr_scheduler.step()
-        # evaluate on the test dataset
-
-        if epoch % 3 == 0:
-            evaluate(model, data_loader_test, device=device)
-            every_parameter = {'epoch': epoch,
-                               'model_state_dict': model.state_dict(),
-                               'optimizer_state_dict': optimizer.state_dict()
-                               }
-            torch.save(every_parameter, os.path.join("models", f"general_detector_{epoch}.pth"))
+    train_set.visualise(index=2)

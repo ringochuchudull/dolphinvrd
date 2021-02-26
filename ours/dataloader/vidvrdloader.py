@@ -3,14 +3,12 @@ Modified from: https://github.com/RaivoKoot/Video-Dataset-Loading-Pytorch
 '''
 from __future__ import print_function, division
 
-import os
-import glob
+import os, glob, json
 from torchvision import transforms as T
 import torch
-import json
 from PIL import Image
 import numpy as np
-
+import cv2
 
 from .generalloader import GeneralLoader
 
@@ -38,8 +36,9 @@ class VideoVRDLoader(GeneralLoader):
         self.transforms = transforms
 
         # # # # # # # # # # #
-        # Start processing #
+        # Start processing# #
         # # # # # # # # # # #
+
         self.root = data_path
         assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
         path_to_json = os.path.join(self.root, set, '*.json')
@@ -65,7 +64,6 @@ class VideoVRDLoader(GeneralLoader):
             _rel = [[] for _ in range(len(info['trajectories']))]
 
             for idx, traj in enumerate(info["trajectories"]):
-
                 if np.equal(len(traj), 0):
                     _bb.append([-1, -1, -1, -1])
                     _cls.append(-1)
@@ -96,6 +94,9 @@ class VideoVRDLoader(GeneralLoader):
     def _load_frames(self, frames):
         return [Image.open(f) for f in frames]
 
+    def _covert_video_to_segment(self, record):
+        num_seg = self._frame_per_segment
+        pass
 
     def __getitem__(self, idx):
 
@@ -114,15 +115,28 @@ class VideoVRDLoader(GeneralLoader):
             transformFunc = T.Compose(transformsList)
 
         blob = {"record": record, "bbox": bbox, "cls": cls, "clsinfo": clsinfo, "relins": relins}
-
         return blob
 
     def __len__(self):
         return len(self.video_names)
 
     def __str__(self):
-        return 'This is VideoVRD loader'
+        return f'This is VideoVRD loader of length {self.__len__()}'
 
+    def visualise(self, index):
+        print(f'Visualising video {index}')
+        blob = self.__getitem__(index)
+
+        video = blob['record']
+        for frame in video:
+            frame = frame.numpy().transpose(1, 2, 0)
+            frame = frame[:, :, ::-1]
+
+            cv2.imshow('Color image', frame)
+            cv2.waitKey(10)
+
+        cv2.destroyAllWindows()
+        return None
 
 class ImglistToTensor(torch.nn.Module):
     """
