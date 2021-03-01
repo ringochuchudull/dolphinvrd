@@ -55,10 +55,22 @@ class VideoVRDLoader(GeneralLoader):
             video_frame_path = glob.glob(os.path.join(self.root, set, video_id, '*.jpeg'))
             assert len(video_frame_path) == info['frame_count'], 'Frame Count and actual count mismatch '
 
+
+            ### This is where the problem is lying!!!!!
+
+            print(f'Frame Count {info["frame_count"]} ')
+            print(f'frame path Count {len(video_frame_path)}')
+            print(f'Traj Count {len(info["trajectories"])}')
+
+            print(info["trajectories"])
+
+            input()
+
             # Only keep the frames with Boxes
             video_frame_path = video_frame_path[0:len(info['trajectories'])]
 
-            # One Video
+            assert len(info["trajectories"]) == len(video_frame_path), "Number of trajectories should equal to video frame path"
+
             this_objid = {so["tid"]:so["category"] for so in info["subject/objects"]}
             _bb, _cls = [], []
             _rel = [[] for _ in range(len(info['trajectories']))]
@@ -67,14 +79,19 @@ class VideoVRDLoader(GeneralLoader):
                 if np.equal(len(traj), 0):
                     _bb.append([-1, -1, -1, -1])
                     _cls.append(-1)
-
-                for t in traj:
-                    _bb.append([t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]])
-                    _cls.append(this_objid[t["tid"]])
+                else:
+                    _bbsub = []
+                    for t in traj:
+                        _bbsub.append([t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]])
+                        _cls.append(this_objid[t["tid"]])
+                    _bb.append(_bbsub)
 
                 for r in info["relation_instances"]:
                     if r['begin_fid'] <= idx <= r['end_fid']:
                         _rel[idx].append([r['subject_tid'], r['predicate'], r['object_tid']])
+
+            print(len(_bb), len(video_frame_path))
+            assert len(_bb)==len(video_frame_path), "Each frame should has at least a bounding box"
 
             self.video_names.append(video_id)
             self._videos_frames.append(video_frame_path)
@@ -82,7 +99,8 @@ class VideoVRDLoader(GeneralLoader):
             self._classes.append(_cls)
             self._classes_info.append(this_objid)
             self._relation_instace.append(_rel)
-            assert len(self._relation_instace) == len(self._bbs_info) == len(self._classes) == len(self._classes_info)
+
+            # assert len(self._relation_instace) == len(self._bbs_info) == len(self._classes) == len(self._classes_info)
 
         self._vis_threshold = _vis_threshold
         self.transforms = transforms
@@ -93,10 +111,6 @@ class VideoVRDLoader(GeneralLoader):
 
     def _load_frames(self, frames):
         return [Image.open(f) for f in frames]
-
-    def _covert_video_to_segment(self, record):
-        num_seg = self._frame_per_segment
-        pass
 
     def __getitem__(self, idx):
 
@@ -123,7 +137,7 @@ class VideoVRDLoader(GeneralLoader):
     def __str__(self):
         return f'This is VideoVRD loader of length {self.__len__()}'
 
-    def visualise(self, index):
+    def visualise(self, index, display=False):
         print(f'Visualising video {index}')
         blob = self.__getitem__(index)
 
@@ -131,11 +145,15 @@ class VideoVRDLoader(GeneralLoader):
         for frame in video:
             frame = frame.numpy().transpose(1, 2, 0)
             frame = frame[:, :, ::-1]
-
             cv2.imshow('Color image', frame)
-            cv2.waitKey(10)
+            cv2.waitKey(5)
 
-        cv2.destroyAllWindows()
+        bbox = blob['bbox']
+
+        print(len(bbox), len(video))
+        for b in bbox:
+            print(b.shape)
+
         return None
 
 class ImglistToTensor(torch.nn.Module):

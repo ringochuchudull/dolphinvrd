@@ -120,4 +120,4 @@ if __name__ == '__main__':
     a = train_set[2]
     print(a.keys())
 
-    train_set.visualise(index=2)
+    for i 
