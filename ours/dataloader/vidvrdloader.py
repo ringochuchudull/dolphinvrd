@@ -28,11 +28,14 @@ class VideoVRDLoader(GeneralLoader):
 
         self.video_names = []       # Name [name1, name2 ... name_n]
         self._videos_frames = []    # Video frames path [ [video1 frames1]... [vidoo frames n] ]
-        self._bbs_info = []
-        self._classes = []
-        self._classes_info = []
-        self._relation_instace = []
+        self._bbs_info = []         # Bounding Boxes [ [] ... [] ]
+        self._classes = []          #
+        self._classes_info = []     #
+        self._relation_instace = [] #
 
+        self._heights, self._widths = [], []
+
+        self.ImglistToTensor = ImglistToTensor()
         self.transforms = transforms
 
         # # # # # # # # # # #
@@ -55,16 +58,8 @@ class VideoVRDLoader(GeneralLoader):
             video_frame_path = glob.glob(os.path.join(self.root, set, video_id, '*.jpeg'))
             assert len(video_frame_path) == info['frame_count'], 'Frame Count and actual count mismatch '
 
-
-            ### This is where the problem is lying!!!!!
-
-            print(f'Frame Count {info["frame_count"]} ')
-            print(f'frame path Count {len(video_frame_path)}')
-            print(f'Traj Count {len(info["trajectories"])}')
-
-            print(info["trajectories"])
-
-            input()
+            self._heights.append(info['height'])
+            self._widths.append(info['width'])
 
             # Only keep the frames with Boxes
             video_frame_path = video_frame_path[0:len(info['trajectories'])]
@@ -90,7 +85,6 @@ class VideoVRDLoader(GeneralLoader):
                     if r['begin_fid'] <= idx <= r['end_fid']:
                         _rel[idx].append([r['subject_tid'], r['predicate'], r['object_tid']])
 
-            print(len(_bb), len(video_frame_path))
             assert len(_bb)==len(video_frame_path), "Each frame should has at least a bounding box"
 
             self.video_names.append(video_id)
@@ -100,7 +94,9 @@ class VideoVRDLoader(GeneralLoader):
             self._classes_info.append(this_objid)
             self._relation_instace.append(_rel)
 
-            # assert len(self._relation_instace) == len(self._bbs_info) == len(self._classes) == len(self._classes_info)
+        # assert len(self._relation_instace) == len(self._bbs_info) == len(self._classes) == len(self._classes_info)
+        assert len(self.video_names) == len(self._videos_frames) == len(self._bbs_info) == len(self._classes) == len(self._classes_info)
+        assert len(self.video_names) == len(self._heights) == len(self._widths)
 
         self._vis_threshold = _vis_threshold
         self.transforms = transforms
@@ -109,27 +105,69 @@ class VideoVRDLoader(GeneralLoader):
     def num_classes(self):
         return len(self._classes)
 
-    def _load_frames(self, frames):
-        return [Image.open(f) for f in frames]
-
     def __getitem__(self, idx):
 
-        record = self._load_frames(self._videos_frames[idx])
+        record = self._videos_frames[idx]
         bbox = self._bbs_info[idx]
         cls = self._classes[idx]
         clsinfo = self._classes_info[idx]
         relins = self._relation_instace[idx]
+        height = self._heights[idx]
+        width = self._widths[idx]
 
-        # Covert to Files
-        ImtoTensor = ImglistToTensor()
-        record = ImtoTensor(record)
+        blob = {"record": record,
+                "bbox": bbox,
+                "cls": cls,
+                "clsinfo": clsinfo,
+                "relins": relins,
+                "height":height,
+                "width":width}
 
-        if self.transforms is not None:
-            transformsList = [t for t in self.transforms]
-            transformFunc = T.Compose(transformsList)
-
-        blob = {"record": record, "bbox": bbox, "cls": cls, "clsinfo": clsinfo, "relins": relins}
         return blob
+
+    def _load_frames(self, frames):
+        if len(frames) == 1:  # Special Case for a single frame
+            return [Image.open(frames[0])]
+        return [Image.open(f) for f in frames]
+
+    def gives_stack_of_frames(self, frames):
+        frames = self._load_frames(frames)
+        frames = self.ImglistToTensor(frames)
+        return frames
+
+    def visualise(self, index, display=False):
+        print(f'Visualising video {index}')
+        blob = self.__getitem__(index)
+
+        video = blob['record']
+        bbox = blob['bbox']
+
+        # Resizing the frame first
+        height, width = blob['height'], blob['width']
+
+        boundary = 0
+        for frame in video:
+            frame = self.gives_stack_of_frames([frame])[0]
+            frame = frame.numpy().transpose(1, 2, 0)
+            frame = frame[:, :, ::-1]
+            # Resize
+            ratio = 720.0 / height
+            size = int(round(width * ratio)) + 2 * boundary, int(round(height * ratio)) + 2 * boundary
+            frame = cv2.resize(frame, (size[0]-2*boundary, size[1]-2*boundary))
+
+            # Pick up from here
+            for b in bbox:
+                print(b)
+                input()
+
+            cv2.imshow('Color image', frame)
+            cv2.waitKey(2)
+
+        cv2.destroyAllWindows()
+        return None
+
+    def get_segment_size(self):
+        return self._frame_per_segment
 
     def __len__(self):
         return len(self.video_names)
@@ -137,24 +175,7 @@ class VideoVRDLoader(GeneralLoader):
     def __str__(self):
         return f'This is VideoVRD loader of length {self.__len__()}'
 
-    def visualise(self, index, display=False):
-        print(f'Visualising video {index}')
-        blob = self.__getitem__(index)
 
-        video = blob['record']
-        for frame in video:
-            frame = frame.numpy().transpose(1, 2, 0)
-            frame = frame[:, :, ::-1]
-            cv2.imshow('Color image', frame)
-            cv2.waitKey(5)
-
-        bbox = blob['bbox']
-
-        print(len(bbox), len(video))
-        for b in bbox:
-            print(b.shape)
-
-        return None
 
 class ImglistToTensor(torch.nn.Module):
     """

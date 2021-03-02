@@ -105,19 +105,14 @@ def evaluate_and_write_result_files(model, data_loader):
             results[target['image_id'].item()] = {'boxes': pred['boxes'].cpu(),
                                                   'scores': pred['scores'].cpu()}
 
-
 if __name__ == '__main__':
 
     parse = GeneralParser()
     parse_options = parse.parse()
 
     train_set = VideoVRDLoader(data_path=parse_options.data_path,
-                              set='train',
-                              transforms=None)
+                               set='train',
+                               transforms=None)
 
-    print(str(train_set))
-
-    a = train_set[2]
-    print(a.keys())
-
-    for i 
+    for idx in range(150):
+        train_set.visualise(idx)
