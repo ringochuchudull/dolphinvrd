@@ -10,7 +10,9 @@ from PIL import Image
 import numpy as np
 import cv2
 
+from .transformfunc import ImglistToTensor
 from .generalloader import GeneralLoader
+from ours.helper.utility import add_bbox
 
 class VideoVRDLoader(GeneralLoader):
 
@@ -29,9 +31,9 @@ class VideoVRDLoader(GeneralLoader):
         self.video_names = []       # Name [name1, name2 ... name_n]
         self._videos_frames = []    # Video frames path [ [video1 frames1]... [vidoo frames n] ]
         self._bbs_info = []         # Bounding Boxes [ [] ... [] ]
-        self._classes = []          #
-        self._classes_info = []     #
-        self._relation_instace = [] #
+        self._classes = []          # Classes [ [ cls1_f1.. cls_n_f1], [cls2...]....]
+        self._classes_info = []     # A dictionary that maps number to class
+        self._relation_instace = [] # Relationship instances at each frame [ [], [], [], ... [] ]
 
         self._heights, self._widths = [], []
 
@@ -41,7 +43,6 @@ class VideoVRDLoader(GeneralLoader):
         # # # # # # # # # # #
         # Start processing# #
         # # # # # # # # # # #
-
         self.root = data_path
         assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
         path_to_json = os.path.join(self.root, set, '*.json')
@@ -146,7 +147,7 @@ class VideoVRDLoader(GeneralLoader):
         height, width = blob['height'], blob['width']
 
         boundary = 0
-        for frame in video:
+        for frame, bbox in zip(video, bbox):
             frame = self.gives_stack_of_frames([frame])[0]
             frame = frame.numpy().transpose(1, 2, 0)
             frame = frame[:, :, ::-1]
@@ -155,10 +156,13 @@ class VideoVRDLoader(GeneralLoader):
             size = int(round(width * ratio)) + 2 * boundary, int(round(height * ratio)) + 2 * boundary
             frame = cv2.resize(frame, (size[0]-2*boundary, size[1]-2*boundary))
 
-            # Pick up from here
+            # Draw bounding boxes
             for b in bbox:
-                print(b)
-                input()
+                print(b.keys())
+
+                
+                #frame = add_bbox(frame, b[])
+
 
             cv2.imshow('Color image', frame)
             cv2.waitKey(2)
@@ -177,20 +181,3 @@ class VideoVRDLoader(GeneralLoader):
 
 
 
-class ImglistToTensor(torch.nn.Module):
-    """
-    Converts a list of PIL images in the range [0,255] to a torch.FloatTensor
-    of shape (NUM_IMAGES x CHANNELS x HEIGHT x WIDTH) in the range [0,1].
-    Can be used as first transform for ``VideoFrameDataset``.
-    """
-    def forward(self, img_list):
-        """
-        Converts each PIL image in a list to
-        a torch Tensor and stacks them into
-        a single tensor.
-        Args:
-            img_list: list of PIL images.
-        Returns:
-            tensor of size ``NUM_IMAGES x CHANNELS x HEIGHT x WIDTH``
-        """
-        return torch.stack([T.functional.to_tensor(pic) for pic in img_list])

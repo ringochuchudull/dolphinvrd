@@ -1,6 +1,9 @@
 '''
 Author = Ringo SW Chu
-Modified from https://github.com/nalepae/bounding-box/blob/master/bounding_box/bounding_box.py
+This file contains code that is modified from the below repository:
+https://github.com/nalepae/bounding-box/blob/master/bounding_box/bounding_box.py
+
+Doing so could prevent a deperciation from the future.
 '''
 
 from __future__ import division as _division
@@ -14,7 +17,16 @@ from PIL import ImageFont
 import numpy as _np
 from hashlib import md5 as _md5
 
-_LOC = _path.realpath(_path.join(_os.getcwd(),_path.dirname(__file__)))
+#_LOC = _path.realpath(_path.join(_os.getcwd(),_path.dirname(__file__)))
+
+def git_root(*args):
+    import subprocess
+    import os
+
+    git_root = subprocess.Popen(
+        ['git', 'rev-parse', '--show-toplevel'],
+        stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
+    return os.path.abspath(os.path.join(git_root, *args))
 
 #https://clrs.cc/
 _COLOR_NAME_TO_RGB = dict(
@@ -40,7 +52,8 @@ _COLOR_NAMES = list(_COLOR_NAME_TO_RGB)
 
 _DEFAULT_COLOR_NAME = "green"
 
-_FONT_PATH = _os.path.join(_LOC, "Ubuntu-B.ttf")
+
+_FONT_PATH = _os.path.join(git_root(), 'doc', "ubuntu-b.ttf")
 _FONT_HEIGHT = 15
 _FONT = ImageFont.truetype(_FONT_PATH, _FONT_HEIGHT)
 
@@ -63,7 +76,7 @@ def _get_label_image(text, font_color_tuple_bgr, background_color_tuple_bgr):
 
     return np.concatenate(image).transpose(1, 2, 0)
 
-def add(image, left, top, right, bottom, label=None, color=None):
+def add_bbox(image, left, top, right, bottom, label=None, color=None):
     if type(image) is not _np.ndarray:
         raise TypeError("'image' parameter must be a numpy.ndarray")
     try:
@@ -127,3 +140,4 @@ def add(image, left, top, right, bottom, label=None, color=None):
 
         image[label_top:label_bottom, label_left:label_right, :] = label_image
 
+    return image

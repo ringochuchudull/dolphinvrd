@@ -41,7 +41,7 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 from ours.helper.parser import GeneralParser
 from ours.dataloader.vidvrdloader import VideoVRDLoader
-from ours.dataloader.transformFile import ImglistToTensor
+from ours.dataloader.transformfunc import ImglistToTensor
 
 
 import ours.helper.vision.transforms as T
