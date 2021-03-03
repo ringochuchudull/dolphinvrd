@@ -52,7 +52,6 @@ _COLOR_NAMES = list(_COLOR_NAME_TO_RGB)
 
 _DEFAULT_COLOR_NAME = "green"
 
-
 _FONT_PATH = _os.path.join(git_root(), 'doc', "ubuntu-b.ttf")
 _FONT_HEIGHT = 15
 _FONT = ImageFont.truetype(_FONT_PATH, _FONT_HEIGHT)

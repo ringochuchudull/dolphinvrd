@@ -14,6 +14,8 @@ from .transformfunc import ImglistToTensor
 from .generalloader import GeneralLoader
 from ours.helper.utility import add_bbox
 
+from collections import defaultdict
+
 class VideoVRDLoader(GeneralLoader):
 
     def __init__(self, data_path,
@@ -30,7 +32,7 @@ class VideoVRDLoader(GeneralLoader):
 
         self.video_names = []       # Name [name1, name2 ... name_n]
         self._videos_frames = []    # Video frames path [ [video1 frames1]... [vidoo frames n] ]
-        self._bbs_info = []         # Bounding Boxes [ [] ... [] ]
+        self._bbs_info = []         # Bounding Boxes [ [xmin ymin xmax ymax] ... [] ]
         self._classes = []          # Classes [ [ cls1_f1.. cls_n_f1], [cls2...]....]
         self._classes_info = []     # A dictionary that maps number to class
         self._relation_instace = [] # Relationship instances at each frame [ [], [], [], ... [] ]
@@ -63,7 +65,10 @@ class VideoVRDLoader(GeneralLoader):
             self._widths.append(info['width'])
 
             # Only keep the frames with Boxes
-            video_frame_path = video_frame_path[0:len(info['trajectories'])]
+            #video_frame_path = video_frame_path[0:len(info['trajectories'])]
+
+            tem_vfp = [video_frame_path[i] for i in range(len(info['trajectories']))]
+            video_frame_path = tem_vfp
 
             assert len(info["trajectories"]) == len(video_frame_path), "Number of trajectories should equal to video frame path"
 
@@ -73,14 +78,17 @@ class VideoVRDLoader(GeneralLoader):
 
             for idx, traj in enumerate(info["trajectories"]):
                 if np.equal(len(traj), 0):
-                    _bb.append([-1, -1, -1, -1])
-                    _cls.append(-1)
+                    _bb.append([[-1, -1, -1, -1]])
+                    _cls.append([-1])
                 else:
-                    _bbsub = []
+                    _bbsub, _clssub = [], []
                     for t in traj:
-                        _bbsub.append([t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]])
-                        _cls.append(this_objid[t["tid"]])
+                        # one target id has one class id only
+                        _bbsub.append({t["tid"]: [t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]]})
+                        _clssub.append(t["tid"])
+
                     _bb.append(_bbsub)
+                    _cls.append(_clssub)
 
                 for r in info["relation_instances"]:
                     if r['begin_fid'] <= idx <= r['end_fid']:
@@ -142,27 +150,41 @@ class VideoVRDLoader(GeneralLoader):
 
         video = blob['record']
         bbox = blob['bbox']
+        cls, cls_info = blob['cls'], blob['clsinfo']
+        relation = blob['relins']
 
         # Resizing the frame first
         height, width = blob['height'], blob['width']
 
+        print(f'length of video, bbox cls {len(video)} {len(bbox)} {len(cls)} {len(cls)}')
         boundary = 0
-        for frame, bbox in zip(video, bbox):
+        for frame, bbox, cl, rel in zip(video, bbox, cls, relation):
             frame = self.gives_stack_of_frames([frame])[0]
             frame = frame.numpy().transpose(1, 2, 0)
             frame = frame[:, :, ::-1]
+
             # Resize
             ratio = 720.0 / height
             size = int(round(width * ratio)) + 2 * boundary, int(round(height * ratio)) + 2 * boundary
             frame = cv2.resize(frame, (size[0]-2*boundary, size[1]-2*boundary))
 
+            print(rel, bbox, cl)
+
+            
             # Draw bounding boxes
-            for b in bbox:
-                print(b.keys())
-
-                
-                #frame = add_bbox(frame, b[])
-
+            for b, c in zip(bbox, cl):
+                print(b, c)
+                if b != [-1, -1, -1, -1] and c != -1:
+                    b = b[c]
+                    frame = add_bbox(frame,
+                                     int(round(b[0]* ratio )),
+                                     int(round(b[1]* ratio)),
+                                     int(round(b[2]* ratio)),
+                                     int(round(b[3]* ratio)),
+                                     label=cls_info[c]
+                                     )
+                else:
+                    print(rel)
 
             cv2.imshow('Color image', frame)
             cv2.waitKey(2)
