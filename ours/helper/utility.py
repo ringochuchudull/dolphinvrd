@@ -28,6 +28,9 @@ def git_root(*args):
         stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
     return os.path.abspath(os.path.join(git_root, *args))
 
+def generate_random_colour():
+    return list(np.random.choice(range(256), size=3))
+
 #https://clrs.cc/
 _COLOR_NAME_TO_RGB = dict(
     navy=((0, 38, 63), (119, 193, 250)),
@@ -45,7 +48,8 @@ _COLOR_NAME_TO_RGB = dict(
     purple=((179, 17, 193), (241, 167, 244)),
     black=((24, 24, 24), (220, 220, 220)),
     gray=((168, 168, 168), (0, 0, 0)),
-    silver=((220, 220, 220), (0, 0, 0))
+    silver=((220, 220, 220), (0, 0, 0)),
+    white=((0,0,0), (0,0,0))
 )
 
 _COLOR_NAMES = list(_COLOR_NAME_TO_RGB)
@@ -62,18 +66,26 @@ def _rgb_to_bgr(color):
 def _color_image(image, font_color, background_color):
     return background_color + (font_color - background_color) * image / 255
 
-def _get_label_image(text, font_color_tuple_bgr, background_color_tuple_bgr):
+def _get_label_image(text, font_color_tuple_bgr=(255,255,255), background_color_tuple_bgr=(0,0,0)):
     text_image = _FONT.getmask(text)
     shape = list(reversed(text_image.size))
     bw_image = np.array(text_image).reshape(shape)
-
     image = [
         _color_image(bw_image, font_color, background_color)[None, ...]
         for font_color, background_color
         in zip(font_color_tuple_bgr, background_color_tuple_bgr)
     ]
-
     return np.concatenate(image).transpose(1, 2, 0)
+
+def add_straight_line(frame, p1, p2, color,predicate=None):
+
+    frame = _cv2.line(frame, p1, p2, color, 2)
+    if predicate:
+        label_image = _get_label_image(predicate)
+        
+
+    return
+
 
 def add_bbox(image, left, top, right, bottom, label=None, color=None):
     if type(image) is not _np.ndarray:
@@ -108,8 +120,14 @@ def add_bbox(image, left, top, right, bottom, label=None, color=None):
 
     if label:
         _, image_width, _ = image.shape
+        label_image = _get_label_image(label, (255,255,255), (0,0,0))
 
-        label_image =  _get_label_image(label, color_text, color)
+        '''
+        print(label_image.shape)
+        _cv2.imshow('label', label_image)
+        _cv2.waitKey(0)
+        input()
+        '''
         label_height, label_width, _ = label_image.shape
 
         rectangle_height, rectangle_width = 1 + label_height, 1 + label_width

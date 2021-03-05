@@ -114,5 +114,5 @@ if __name__ == '__main__':
                                set='train',
                                transforms=None)
 
-    for idx in range(150):
-        train_set.visualise(idx)
+    for idx in range(5, 150):
+        train_set.visualise(idx, True)

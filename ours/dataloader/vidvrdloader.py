@@ -12,7 +12,7 @@ import cv2
 
 from .transformfunc import ImglistToTensor
 from .generalloader import GeneralLoader
-from ours.helper.utility import add_bbox
+from ours.helper.utility import add_bbox, add_straight_line
 
 from collections import defaultdict
 
@@ -78,13 +78,14 @@ class VideoVRDLoader(GeneralLoader):
 
             for idx, traj in enumerate(info["trajectories"]):
                 if np.equal(len(traj), 0):
-                    _bb.append([[-1, -1, -1, -1]])
+                    _bb.append({-1: [-1, -1, -1, -1]})
                     _cls.append([-1])
                 else:
-                    _bbsub, _clssub = [], []
+                    _bbsub, _clssub = {}, []
                     for t in traj:
                         # one target id has one class id only
-                        _bbsub.append({t["tid"]: [t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]]})
+                        #_bbsub.append({t["tid"]: [t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]]})
+                        _bbsub[t["tid"]] = [t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]]
                         _clssub.append(t["tid"])
 
                     _bb.append(_bbsub)
@@ -144,7 +145,7 @@ class VideoVRDLoader(GeneralLoader):
         frames = self.ImglistToTensor(frames)
         return frames
 
-    def visualise(self, index, display=False):
+    def visualise(self, index, draw_box=True, draw_relation=True):
         print(f'Visualising video {index}')
         blob = self.__getitem__(index)
 
@@ -156,7 +157,7 @@ class VideoVRDLoader(GeneralLoader):
         # Resizing the frame first
         height, width = blob['height'], blob['width']
 
-        print(f'length of video, bbox cls {len(video)} {len(bbox)} {len(cls)} {len(cls)}')
+        # print(f'length of video, bbox cls {len(video)} {len(bbox)} {len(cls)} {len(cls)}')
         boundary = 0
         for frame, bbox, cl, rel in zip(video, bbox, cls, relation):
             frame = self.gives_stack_of_frames([frame])[0]
@@ -168,23 +169,44 @@ class VideoVRDLoader(GeneralLoader):
             size = int(round(width * ratio)) + 2 * boundary, int(round(height * ratio)) + 2 * boundary
             frame = cv2.resize(frame, (size[0]-2*boundary, size[1]-2*boundary))
 
-            print(rel, bbox, cl)
+            if draw_box:
+                # Draw bounding boxes
+                for c, b in bbox.items():
+                    if b != [-1, -1, -1, -1] and c != -1:
+                        frame = add_bbox(frame,
+                                         int(round(b[0]* ratio)),
+                                         int(round(b[1]* ratio)),
+                                         int(round(b[2]* ratio)),
+                                         int(round(b[3]* ratio)),
+                                         label=cls_info[c]
+                                         )
+                    else:
+                        print('This frame has no relation tagging')
 
-            
-            # Draw bounding boxes
-            for b, c in zip(bbox, cl):
-                print(b, c)
-                if b != [-1, -1, -1, -1] and c != -1:
-                    b = b[c]
-                    frame = add_bbox(frame,
-                                     int(round(b[0]* ratio )),
-                                     int(round(b[1]* ratio)),
-                                     int(round(b[2]* ratio)),
-                                     int(round(b[3]* ratio)),
-                                     label=cls_info[c]
-                                     )
-                else:
-                    print(rel)
+            if draw_relation:
+                if -1 not in bbox:
+                    for r in rel:
+                        print(r, bbox, cls_info)
+
+                        try:
+                            sub_cord = bbox[r[0]]  # subject coordinate
+                            sub_center_x, sub_center_y = (sub_cord[0] + sub_cord[2])/2, (sub_cord[1] + sub_cord[3])/2
+                            sub_name = cls_info[r[0]]
+                        except KeyError:
+                            print('Subject ID has no detection')
+                            continue
+                        try:
+                            obj_cord = bbox[r[2]]  # object coordinates
+                            obj_center_x, obj_center_y = int(round((obj_cord[0] + obj_cord[2])/2)), int(round((sub_cord[1] + sub_cord[3])/2))
+                            obj_name = cls_info[r[2]]
+                        except:
+                            print('Object ID has no detection')
+                            continue
+
+                        predicate = r[1]
+
+                        # Finish this line....
+                        add_straight_line(frame)
 
             cv2.imshow('Color image', frame)
             cv2.waitKey(2)
