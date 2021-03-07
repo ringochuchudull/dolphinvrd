@@ -82,8 +82,9 @@ def add_straight_line(frame, p1, p2, color,predicate=None):
     frame = _cv2.line(frame, p1, p2, color, 2)
     if predicate:
         label_image = _get_label_image(predicate)
-        
 
+
+    
     return
 
 
