@@ -28,8 +28,11 @@ def git_root(*args):
         stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
     return os.path.abspath(os.path.join(git_root, *args))
 
-def generate_random_colour():
-    return list(np.random.choice(range(256), size=3))
+def generate_random_colour(integer=False):
+    if integer:
+        return [int(np.random.choice(range(256), size=1)) for _ in range(3)]
+    else:
+        return [np.random.uniform() for _ in range(3)]
 
 #https://clrs.cc/
 _COLOR_NAME_TO_RGB = dict(
@@ -49,12 +52,10 @@ _COLOR_NAME_TO_RGB = dict(
     black=((24, 24, 24), (220, 220, 220)),
     gray=((168, 168, 168), (0, 0, 0)),
     silver=((220, 220, 220), (0, 0, 0)),
-    white=((0,0,0), (0,0,0))
-)
+    white=((0,0,0), (0,0,0)))
 
 _COLOR_NAMES = list(_COLOR_NAME_TO_RGB)
-
-_DEFAULT_COLOR_NAME = "green"
+_DEFAULT_COLOR_NAME = "navy"
 
 _FONT_PATH = _os.path.join(git_root(), 'doc', "ubuntu-b.ttf")
 _FONT_HEIGHT = 15
@@ -77,15 +78,33 @@ def _get_label_image(text, font_color_tuple_bgr=(255,255,255), background_color_
     ]
     return np.concatenate(image).transpose(1, 2, 0)
 
-def add_straight_line(frame, p1, p2, color,predicate=None):
+def add_straight_line(frame, p1, p2, p1_name, p2_name, predicate, colour=None):
 
-    frame = _cv2.line(frame, p1, p2, color, 2)
-    if predicate:
-        label_image = _get_label_image(predicate)
+    if colour is None:
+        colour = generate_random_colour()
 
+    frame = _cv2.line(frame, p1, p2, colour, 2)
 
-    
-    return
+    predicate_image = _get_label_image(predicate)
+
+    # Straight Line mid-point
+    mid_y, mid_x = int(round((p1[0] + p2[0])/2)), int(round((p1[1] + p2[1])/2))
+    label_height, label_width, _ = predicate_image.shape
+
+    frame[mid_x:mid_x+label_height, mid_y:mid_y+label_width, :] = predicate_image
+
+    try:
+        sub_image = _get_label_image(p1_name)
+        sub_label_height, sub_label_width, _ = sub_image.shape
+        frame[p1[1]:p1[1]+sub_label_height, p1[0]:p1[0]+sub_label_width, :] = sub_image
+
+        obj_image = _get_label_image(p2_name)
+        obj_label_height, obj_label_width, _ = obj_image.shape
+        frame[p2[1]:p2[1]+obj_label_height, p2[0]:p2[0]+obj_label_width, :] = obj_image
+    except ValueError:
+        print('Bounding Box lies outside the frame')
+
+    return frame
 
 
 def add_bbox(image, left, top, right, bottom, label=None, color=None):
@@ -114,21 +133,17 @@ def add_bbox(image, left, top, right, bottom, label=None, color=None):
         msg = "'color' must be one of " + ", ".join(_COLOR_NAME_TO_RGB)
         raise ValueError(msg)
 
+
     colors = [_rgb_to_bgr(item) for item in _COLOR_NAME_TO_RGB[color]]
     color, color_text = colors
 
+    color = [c/255 for c in color]
     _cv2.rectangle(image, (left, top), (right, bottom), color, 2)
 
     if label:
         _, image_width, _ = image.shape
         label_image = _get_label_image(label, (255,255,255), (0,0,0))
 
-        '''
-        print(label_image.shape)
-        _cv2.imshow('label', label_image)
-        _cv2.waitKey(0)
-        input()
-        '''
         label_height, label_width, _ = label_image.shape
 
         rectangle_height, rectangle_width = 1 + label_height, 1 + label_width

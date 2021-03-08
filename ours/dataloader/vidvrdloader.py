@@ -13,6 +13,7 @@ import cv2
 from .transformfunc import ImglistToTensor
 from .generalloader import GeneralLoader
 from ours.helper.utility import add_bbox, add_straight_line
+from ours.helper.utility import generate_random_colour, _COLOR_NAME_TO_RGB
 
 from collections import defaultdict
 
@@ -65,8 +66,6 @@ class VideoVRDLoader(GeneralLoader):
             self._widths.append(info['width'])
 
             # Only keep the frames with Boxes
-            #video_frame_path = video_frame_path[0:len(info['trajectories'])]
-
             tem_vfp = [video_frame_path[i] for i in range(len(info['trajectories']))]
             video_frame_path = tem_vfp
 
@@ -83,8 +82,6 @@ class VideoVRDLoader(GeneralLoader):
                 else:
                     _bbsub, _clssub = {}, []
                     for t in traj:
-                        # one target id has one class id only
-                        #_bbsub.append({t["tid"]: [t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]]})
                         _bbsub[t["tid"]] = [t["bbox"]["xmin"], t["bbox"]["ymin"], t["bbox"]["xmax"], t["bbox"]["ymax"]]
                         _clssub.append(t["tid"])
 
@@ -104,7 +101,6 @@ class VideoVRDLoader(GeneralLoader):
             self._classes_info.append(this_objid)
             self._relation_instace.append(_rel)
 
-        # assert len(self._relation_instace) == len(self._bbs_info) == len(self._classes) == len(self._classes_info)
         assert len(self.video_names) == len(self._videos_frames) == len(self._bbs_info) == len(self._classes) == len(self._classes_info)
         assert len(self.video_names) == len(self._heights) == len(self._widths)
 
@@ -152,61 +148,79 @@ class VideoVRDLoader(GeneralLoader):
         video = blob['record']
         bbox = blob['bbox']
         cls, cls_info = blob['cls'], blob['clsinfo']
+        # Assign Colour for class
+        cls_colour = {k: np.random.choice(list(_COLOR_NAME_TO_RGB.keys())) for k in cls_info.keys()}
+
         relation = blob['relins']
+        # Relation Colour
+        relation_colours = defaultdict(str)
 
         # Resizing the frame first
         height, width = blob['height'], blob['width']
 
-        # print(f'length of video, bbox cls {len(video)} {len(bbox)} {len(cls)} {len(cls)}')
         boundary = 0
-        for frame, bbox, cl, rel in zip(video, bbox, cls, relation):
+        for i, (frame, bbox, cl, rel) in enumerate(zip(video, bbox, cls, relation)):
+
+            # PUT Torch tensor back to numpy array
             frame = self.gives_stack_of_frames([frame])[0]
             frame = frame.numpy().transpose(1, 2, 0)
             frame = frame[:, :, ::-1]
 
-            # Resize
+            # Resize the video
             ratio = 720.0 / height
             size = int(round(width * ratio)) + 2 * boundary, int(round(height * ratio)) + 2 * boundary
             frame = cv2.resize(frame, (size[0]-2*boundary, size[1]-2*boundary))
 
+            # Draw bounding box For the object
             if draw_box:
                 # Draw bounding boxes
                 for c, b in bbox.items():
                     if b != [-1, -1, -1, -1] and c != -1:
+
                         frame = add_bbox(frame,
                                          int(round(b[0]* ratio)),
                                          int(round(b[1]* ratio)),
                                          int(round(b[2]* ratio)),
                                          int(round(b[3]* ratio)),
-                                         label=cls_info[c]
-                                         )
+                                         label=None,
+                                         color=str(cls_colour[c]))
                     else:
-                        print('This frame has no relation tagging')
+                        pass
+                        #print('This frame has no relation tagging')
 
             if draw_relation:
                 if -1 not in bbox:
                     for r in rel:
-                        print(r, bbox, cls_info)
+
+                        this_colour = None
+                        if r[1] in relation_colours:
+                            this_colour = relation_colours[r[1]]
+                        else:
+                            relation_colours[r[1]]= generate_random_colour()
+                            this_colour = relation_colours[r[1]]
 
                         try:
                             sub_cord = bbox[r[0]]  # subject coordinate
-                            sub_center_x, sub_center_y = (sub_cord[0] + sub_cord[2])/2, (sub_cord[1] + sub_cord[3])/2
+                            sub_center_x, sub_center_y = int(round((sub_cord[0] + sub_cord[2])/2)*ratio), int(round((sub_cord[1] + sub_cord[3])/2)*ratio)
                             sub_name = cls_info[r[0]]
                         except KeyError:
-                            print('Subject ID has no detection')
+                            print(f'Subject ID has no detection at Video {index} frame {i} ')
                             continue
                         try:
                             obj_cord = bbox[r[2]]  # object coordinates
-                            obj_center_x, obj_center_y = int(round((obj_cord[0] + obj_cord[2])/2)), int(round((sub_cord[1] + sub_cord[3])/2))
+                            obj_center_x, obj_center_y = int(round((obj_cord[0] + obj_cord[2])/2)*ratio), int(round((obj_cord[1] + obj_cord[3])/2)*ratio)
                             obj_name = cls_info[r[2]]
                         except:
-                            print('Object ID has no detection')
+                            print(f'Object ID has no detection at Video {index} frame {i}')
                             continue
 
                         predicate = r[1]
-
-                        # Finish this line....
-                        add_straight_line(frame)
+                        subject_centre = (sub_center_x, sub_center_y)
+                        object_centre = (obj_center_x, obj_center_y)
+                        try:
+                            frame = add_straight_line(frame, subject_centre, object_centre, sub_name, obj_name, predicate, this_colour)
+                        except ValueError:
+                            print("Predicate box lies outside frame")
 
             cv2.imshow('Color image', frame)
             cv2.waitKey(2)

@@ -106,7 +106,6 @@ def evaluate_and_write_result_files(model, data_loader):
                                                   'scores': pred['scores'].cpu()}
 
 if __name__ == '__main__':
-
     parse = GeneralParser()
     parse_options = parse.parse()
 
@@ -114,5 +113,7 @@ if __name__ == '__main__':
                                set='train',
                                transforms=None)
 
-    for idx in range(5, 150):
-        train_set.visualise(idx, True)
+    for idx in range(173, 300):
+        train_set.visualise(idx,
+                            draw_box=True,
+                            draw_relation=True)
