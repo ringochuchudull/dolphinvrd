@@ -1,7 +1,7 @@
 import os
 import glob
 
-from .dataset import Dataset
+from dataset.vg.dataset import Dataset
 
 
 class VidVRD(Dataset):

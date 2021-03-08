@@ -1,7 +1,7 @@
 import os
 import glob
 
-from .dataset import DatasetV1
+from dataset.vg.dataset import DatasetV1
 
 
 class VidOR(DatasetV1):

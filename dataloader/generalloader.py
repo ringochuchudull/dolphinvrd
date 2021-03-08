@@ -1,9 +1,9 @@
 import os
 import torch
 
-import ours.helper.vision.transforms as T
-from ours.helper.vision.engine import train_one_epoch, evaluate
-import ours.helper.vision.utils as utils
+import model.helper.vision.transforms as T
+from model.helper.vision.engine import train_one_epoch, evaluate
+import model.helper.vision.utils as utils
 
 class GeneralLoader(torch.utils.data.Dataset):
 

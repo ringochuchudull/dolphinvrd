@@ -4,7 +4,7 @@ __Description__ = 'Covert ImgNet Video to Frames
 '''
 
 from __future__ import absolute_import, division, print_function
-from ours.helper.parser import GeneralParser
+from model.helper.parser import GeneralParser
 import os, glob, json
 import cv2
 from tqdm import tqdm

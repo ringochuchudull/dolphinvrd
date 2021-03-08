@@ -8,10 +8,10 @@ from PIL import Image
 import numpy as np
 import cv2
 
-from .transformfunc import ImglistToTensor
+from dataloader.image_transform import ImglistToTensor
 from .generalloader import GeneralLoader
-from ours.helper.utility import add_bbox, add_straight_line
-from ours.helper.utility import generate_random_colour, _COLOR_NAME_TO_RGB
+from model.helper.utility import add_bbox, add_straight_line
+from model.helper.utility import generate_random_colour, _COLOR_NAME_TO_RGB
 
 from collections import defaultdict
 

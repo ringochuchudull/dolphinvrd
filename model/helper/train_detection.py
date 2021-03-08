@@ -28,26 +28,16 @@ Note:
 '''
 
 from __future__ import absolute_import, division, print_function
-import os, glob, json
-
-from PIL import Image
-import numpy as np
-import cv2
 
 import torch
 import torch.utils.data
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
-from ours.helper.parser import GeneralParser
-from ours.dataloader.vidvrdloader import VideoVRDLoader
-from ours.dataloader.transformfunc import ImglistToTensor
+from model.helper.parser import GeneralParser
+from dataloader.vidvrdloader import VideoVRDLoader
 
-
-import ours.helper.vision.transforms as T
-from ours.helper.vision.engine import train_one_epoch, evaluate
-import ours.helper.vision.utils as utils
-
+import model.helper.vision.transforms as T
 
 
 def get_instance_segmentation_model_v2(num_classes):
