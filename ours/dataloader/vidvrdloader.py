@@ -4,8 +4,6 @@ Modified from: https://github.com/RaivoKoot/Video-Dataset-Loading-Pytorch
 from __future__ import print_function, division
 
 import os, glob, json
-from torchvision import transforms as T
-import torch
 from PIL import Image
 import numpy as np
 import cv2
