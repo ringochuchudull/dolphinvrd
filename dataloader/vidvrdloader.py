@@ -184,7 +184,6 @@ class VideoVRDLoader(GeneralLoader):
                                          color=str(cls_colour[c]))
                     else:
                         pass
-                        #print('This frame has no relation tagging')
 
             if draw_relation:
                 if -1 not in bbox:
