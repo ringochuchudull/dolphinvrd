@@ -86,22 +86,5 @@ def main():
             size[0] - 2 * boundary, size[1] - 2 * boundary))
             video_frames[i] = background
 
-        '''
-        for i in range(anno['frame_count']):
-            cv2.imshow('does it matter?v2', video_frames[i])
-            cv2.waitKey(2)
-        '''
-        '''
-        print(height, width)
-        print(fps, frame_count)
-        print(video_id)
-        print('\n\n\n\n\n\n\n')
-        print(subject_objects)
-        print('\n\n\n\n\n\n\n')
-        print(len(trajectories))
-        print('\n\n\n\n\n\n\n')
-        print(relation_instances)
-        '''
-
 if __name__ == '__main__':
     main()
