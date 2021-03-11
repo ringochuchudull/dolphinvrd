@@ -61,11 +61,14 @@ _FONT_PATH = _os.path.join(git_root(), 'doc', "ubuntu-b.ttf")
 _FONT_HEIGHT = 15
 _FONT = ImageFont.truetype(_FONT_PATH, _FONT_HEIGHT)
 
+
 def _rgb_to_bgr(color):
     return list(reversed(color))
 
+
 def _color_image(image, font_color, background_color):
     return background_color + (font_color - background_color) * image / 255
+
 
 def _get_label_image(text, font_color_tuple_bgr=(255,255,255), background_color_tuple_bgr=(0,0,0)):
     text_image = _FONT.getmask(text)
@@ -78,6 +81,7 @@ def _get_label_image(text, font_color_tuple_bgr=(255,255,255), background_color_
     ]
     return np.concatenate(image).transpose(1, 2, 0)
 
+
 def add_straight_line(frame, p1, p2, p1_name, p2_name, predicate, colour=None):
 
     if colour is None:
@@ -86,26 +90,41 @@ def add_straight_line(frame, p1, p2, p1_name, p2_name, predicate, colour=None):
     frame = _cv2.line(frame, p1, p2, colour, 2)
 
     predicate_image = _get_label_image(predicate)
-
     # Straight Line mid-point
     mid_y, mid_x = int(round((p1[0] + p2[0])/2)), int(round((p1[1] + p2[1])/2))
     label_height, label_width, _ = predicate_image.shape
-
-    frame[mid_x:mid_x+label_height, mid_y:mid_y+label_width, :] = predicate_image
-
     try:
-        sub_image = _get_label_image(p1_name)
-        sub_label_height, sub_label_width, _ = sub_image.shape
+        frame[mid_x:mid_x+label_height, mid_y:mid_y+label_width, :] = predicate_image
+    except ValueError as ErrMsg:
+        print(f"\tPredicate Box lies outside Frame: {ErrMsg}")
+        print(f'Shape of the frame {frame.shape}, Label_image_size: {predicate_image.shape},')
+        print(f' Predicate Box Location at X: {p1[1]} - {p1[1]+label_height}')
+        print(f' Predicate Box Location at Y: {p1[0]} - {p1[0]+label_width}')
+        print(f" You should clip the boxes using torch.ops built-in functions")
+
+    sub_image = _get_label_image(p1_name)
+    sub_label_height, sub_label_width, _ = sub_image.shape
+    try:
         frame[p1[1]:p1[1]+sub_label_height, p1[0]:p1[0]+sub_label_width, :] = sub_image
+    except ValueError as ErrMsg:
+        print(f"\tSubject Bounding Box lies outside Frame: {ErrMsg}")
+        print(f'Shape of the frame {frame.shape}, Label_image_size: {sub_image.shape},')
+        print(f' Subject Box Location at X: {p1[1]} - {p1[1]+sub_label_height}')
+        print(f' Object Box Location at Y: {p1[0]} - {p1[0]+sub_label_width}')
+        print(f" You should clip the boxes using torch.ops built-in functions")
 
-        obj_image = _get_label_image(p2_name)
-        obj_label_height, obj_label_width, _ = obj_image.shape
+    obj_image = _get_label_image(p2_name)
+    obj_label_height, obj_label_width, _ = obj_image.shape
+    try:
         frame[p2[1]:p2[1]+obj_label_height, p2[0]:p2[0]+obj_label_width, :] = obj_image
-    except ValueError:
-        print('Bounding Box lies outside the frame')
-
+    except ValueError as ErrMsg:
+        print('\tObject Bounding Box lies outside the frame')
+        print(f"\tObject Bounding Box lies outside Frame: {ErrMsg}")
+        print(f'Shape of the frame {frame.shape}, Label_image_size: {obj_image.shape},')
+        print(f' Object Box Location at X: {p1[1]} - {p1[1]+obj_label_height}')
+        print(f' Object Box Location at Y: {p1[0]} - {p1[0]+obj_label_width}')
+        print(f" You should clip the boxes using torch.ops built-in functions")
     return frame
-
 
 def add_bbox(image, left, top, right, bottom, label=None, color=None):
     if type(image) is not _np.ndarray:
@@ -132,7 +151,6 @@ def add_bbox(image, left, top, right, bottom, label=None, color=None):
     if color not in _COLOR_NAME_TO_RGB:
         msg = "'color' must be one of " + ", ".join(_COLOR_NAME_TO_RGB)
         raise ValueError(msg)
-
 
     colors = [_rgb_to_bgr(item) for item in _COLOR_NAME_TO_RGB[color]]
     color, color_text = colors

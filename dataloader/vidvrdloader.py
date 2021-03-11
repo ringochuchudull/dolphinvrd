@@ -214,10 +214,7 @@ class VideoVRDLoader(GeneralLoader):
                         predicate = r[1]
                         subject_centre = (sub_center_x, sub_center_y)
                         object_centre = (obj_center_x, obj_center_y)
-                        try:
-                            frame = add_straight_line(frame, subject_centre, object_centre, sub_name, obj_name, predicate, this_colour)
-                        except ValueError:
-                            print("Predicate box lies outside frame")
+                        frame = add_straight_line(frame, subject_centre, object_centre, sub_name, obj_name, predicate, this_colour)
 
             cv2.imshow('Color image', frame)
             cv2.waitKey(2)
@@ -233,6 +230,3 @@ class VideoVRDLoader(GeneralLoader):
 
     def __str__(self):
         return f'This is VideoVRD loader of length {self.__len__()}'
-
-
-

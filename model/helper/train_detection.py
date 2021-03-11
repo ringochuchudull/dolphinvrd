@@ -103,7 +103,7 @@ if __name__ == '__main__':
                                set='train',
                                transforms=None)
 
-    for idx in range(400, 500):
+    for idx in range(477, 500):
         train_set.visualise(idx,
                             draw_box=True,
                             draw_relation=True)
