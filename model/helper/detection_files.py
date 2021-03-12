@@ -117,6 +117,7 @@ if __name__ == '__main__':
                                                set='train',
                                                transforms=get_transform(True))
 
+    # Use ResNet-16
     detector_model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
 
     for i in range(10):
