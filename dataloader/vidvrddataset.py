@@ -5,29 +5,26 @@ from __future__ import print_function, division
 
 import os, glob, json
 from PIL import Image
-import numpy as np
 import cv2
+import numpy as np
 
-from .generalloader import GeneralLoader
+from .generaldataset import GeneralDataset
 from dataloader.image_transform import ImglistToTensor
 from model.helper.utility import add_bbox, add_straight_line
 from model.helper.utility import generate_random_colour, _COLOR_NAME_TO_RGB
-
 from collections import defaultdict
 
-class VideoVRDLoader(GeneralLoader):
+class VideoVRDDataset(GeneralDataset):
 
     def __init__(self, data_path,
                  set='train',
                  frames_per_segment: int = 5,
-                 imagefile_template: str='{:06d}.jpg',
                  transforms=None,
                  _vis_threshold=0.2):
 
-        super(GeneralLoader, self).__init__()
+        super(GeneralDataset, self).__init__()
 
         self._frame_per_segment = frames_per_segment
-        self.imagefile_template = imagefile_template
 
         self.video_names = []       # Name [name1, name2 ... name_n]
         self._videos_frames = []    # Video frames path [ [video1 frames1]... [vidoo frames n] ]
@@ -110,6 +107,19 @@ class VideoVRDLoader(GeneralLoader):
         return len(self._classes)
 
     def __getitem__(self, idx):
+        blob = self._get(idx)
+
+        '''
+        # Should return a list of images
+        video = blob['record']
+        frames = self.gives_stack_of_frames(video)
+        blob["video_frames"] = None
+        if self.transforms:
+            pass
+        '''
+        return blob
+
+    def _get(self, idx):
 
         record = self._videos_frames[idx]
         bbox = self._bbs_info[idx]
@@ -124,8 +134,8 @@ class VideoVRDLoader(GeneralLoader):
                 "cls": cls,
                 "clsinfo": clsinfo,
                 "relins": relins,
-                "height":height,
-                "width":width}
+                "height": height,
+                "width": width}
 
         return blob
 
@@ -141,7 +151,7 @@ class VideoVRDLoader(GeneralLoader):
 
     def visualise(self, index, draw_box=True, draw_relation=True):
         print(f'Visualising video {index}')
-        blob = self.__getitem__(index)
+        blob = self._get(index)
 
         video = blob['record']
         bbox = blob['bbox']
@@ -169,9 +179,7 @@ class VideoVRDLoader(GeneralLoader):
             size = int(round(width * ratio)) + 2 * boundary, int(round(height * ratio)) + 2 * boundary
             frame = cv2.resize(frame, (size[0]-2*boundary, size[1]-2*boundary))
 
-            # Draw bounding box For the object
             if draw_box:
-                # Draw bounding boxes
                 for c, b in bbox.items():
                     if b != [-1, -1, -1, -1] and c != -1:
                         frame = add_bbox(frame,
@@ -179,10 +187,7 @@ class VideoVRDLoader(GeneralLoader):
                                          int(round(b[1]* ratio)),
                                          int(round(b[2]* ratio)),
                                          int(round(b[3]* ratio)),
-                                         label=None,
                                          color=str(cls_colour[c]))
-                    else:
-                        pass
 
             if draw_relation:
                 if -1 not in bbox:
@@ -229,3 +234,30 @@ class VideoVRDLoader(GeneralLoader):
 
     def __str__(self):
         return f'This is VideoVRD loader of length {self.__len__()}'
+
+# This is virtuall the same class as VidVrd, except that it returns one image for training
+
+class ObjectDetectVidVRDDataset(VideoVRDDataset):
+
+    def __getitem__(self, idx):
+
+        blob = self._get(idx)
+        record = blob["record"]
+        bbox = blob["bbox"]
+        _, cls_info = blob["cls"], blob["clsinfo"]
+        random_index = np.random.randint(0, high=len(record))
+
+        this_frame = record[random_index]
+        this_frame = self.gives_stack_of_frames([this_frame])[0]
+        this_bbox = bbox[random_index]
+
+        boxes, classme = [], []
+        for c, b in this_bbox.items():
+            if b == [-1,-1,-1,-1]:
+                classme.append([])
+                boxes.append([])
+            else:
+                classme.append(cls_info[c])
+                boxes.append(b)
+
+        return this_frame, (boxes, classme)

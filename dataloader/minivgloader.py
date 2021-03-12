@@ -10,7 +10,7 @@ from PIL import Image
 import numpy as np
 import cv2
 
-from .generalloader import GeneralLoader
+from .generaldataset import GeneralLoader
 
 def MiniVGLoader(GeneralLoader):
 

@@ -1,11 +1,7 @@
 import os
 import torch
 
-import model.helper.vision.transforms as T
-from model.helper.vision.engine import train_one_epoch, evaluate
-import model.helper.vision.utils as utils
-
-class GeneralLoader(torch.utils.data.Dataset):
+class GeneralDataset(torch.utils.data.Dataset):
 
     def __init__(self, data_path, set, transforms=None, _vis_threshold=0.2):
 

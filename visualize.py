@@ -50,17 +50,21 @@ def write_video(video, fps, size, path):
 
 def visualize(anno, video_path, out_path):
     video = read_video(video_path)
+
     assert anno['frame_count']==len(video), '{} : anno {} video {}'.format(anno['video_id'], anno['frame_count'], len(video))
     assert anno['width']==video[0].shape[1] and anno['height']==video[0].shape[0],\
             '{} : anno ({}, {}) video {}'.format(anno['video_id'], anno['height'], anno['width'], video[0].shape)
+
     # resize video to be 720p
     ratio = 720.0/anno['height']
     boundary = 20
     size = int(round(anno['width']*ratio))+2*boundary, int(round(anno['height']*ratio))+2*boundary
+
     for i in range(anno['frame_count']):
         background = np.zeros((size[1], size[0], 3), dtype=np.uint8)
         background[boundary:size[1]-boundary, boundary:size[0]-boundary] = cv2.resize(video[i], (size[0]-2*boundary, size[1]-2*boundary))
         video[i] = background
+
     # collect subject/objects
     subobj = dict()
     for x in anno['subject/objects']:

@@ -29,13 +29,15 @@ Note:
 
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 import torch
 import torch.utils.data
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
-from model.helper.parser import GeneralParser
-from dataloader.vidvrdloader import VideoVRDLoader
+from model.helper.parser import GeneralParser # Comment Line Arguement Parser
+from dataloader.vidvrddataset import VideoVRDDataset, ObjectDetectVidVRDDataset
+from model.helper.utility import _COLOR_NAME_TO_RGB
 
 import model.helper.vision.transforms as T
 
@@ -99,11 +101,17 @@ if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
 
+    '''
     train_set = VideoVRDLoader(data_path=parse_options.data_path,
                                set='train',
                                transforms=None)
+    '''
+    trainset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
+                                               set='train',
+                                               transforms=None)
 
-    for idx in range(477, 500):
-        train_set.visualise(idx,
-                            draw_box=True,
-                            draw_relation=True)
+    detector_model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
+
+    for i in range(10):
+        frame, (boxex, classes) = trainset_detection[i]
+        
