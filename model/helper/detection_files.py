@@ -76,7 +76,7 @@ def get_detection_model(num_classes):
 def get_transform(train):
     transforms = []
     # converts the image, a PIL image, into a PyTorch Tensor
-    transforms.append(T.ToTensor())
+    # transforms.append(T.ToTensor())
     if train:
         # https://pytorch.org/docs/stable/torchvision/transforms.html
         transforms.append(T.RandomHorizontalFlip(0.5))
@@ -97,6 +97,13 @@ def evaluate_and_write_result_files(model, data_loader):
             results[target['image_id'].item()] = {'boxes': pred['boxes'].cpu(),
                                                   'scores': pred['scores'].cpu()}
 
+
+def train():
+    pass
+
+def test():
+    pass
+
 if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
@@ -108,9 +115,9 @@ if __name__ == '__main__':
     '''
     trainset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
                                                set='train',
-                                               transforms=None)
+                                               transforms=get_transform(True))
 
     detector_model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
 
     for i in range(10):
-        frame, (boxex, classes) = trainset_detection[i]
+        frame, target = trainset_detection[i]

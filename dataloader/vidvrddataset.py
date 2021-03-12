@@ -260,10 +260,6 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
                 classme.append(cls_info[c])
                 boxes.append(b)
 
-        print(boxes)
-        print(classme)
-        print();print()
-
         target = {}
         target["boxes"] = this_frame
         target["labels"] = classme
