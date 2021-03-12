@@ -8,8 +8,8 @@ from PIL import Image
 import numpy as np
 import cv2
 
-from dataloader.image_transform import ImglistToTensor
 from .generalloader import GeneralLoader
+from dataloader.image_transform import ImglistToTensor
 from model.helper.utility import add_bbox, add_straight_line
 from model.helper.utility import generate_random_colour, _COLOR_NAME_TO_RGB
 
@@ -174,7 +174,6 @@ class VideoVRDLoader(GeneralLoader):
                 # Draw bounding boxes
                 for c, b in bbox.items():
                     if b != [-1, -1, -1, -1] and c != -1:
-
                         frame = add_bbox(frame,
                                          int(round(b[0]* ratio)),
                                          int(round(b[1]* ratio)),
