@@ -36,7 +36,7 @@ import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 from model.helper.parser import GeneralParser # Comment Line Arguement Parser
-from dataloader.vidvrddataset import VideoVRDDataset, ObjectDetectVidVRDDataset
+from dataset.vidvrddataset import VideoVRDDataset, ObjectDetectVidVRDDataset
 from model.helper.utility import _COLOR_NAME_TO_RGB
 
 import model.helper.vision.transforms as T
