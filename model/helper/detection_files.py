@@ -37,10 +37,10 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 from model.helper.parser import GeneralParser # Comment Line Arguement Parser
 from dataset.vidvrddataset import VideoVRDDataset, ObjectDetectVidVRDDataset
-from model.helper.utility import _COLOR_NAME_TO_RGB
 
 import model.helper.vision.transforms as T
-
+import model.helper.vision.utils as util
+from model.helper.vision.engine import train_one_epoch, evaluate
 
 def get_instance_segmentation_model_v2(num_classes):
     # load an instance segmentation model pre-trained on COCO
@@ -97,28 +97,56 @@ def evaluate_and_write_result_files(model, data_loader):
             results[target['image_id'].item()] = {'boxes': pred['boxes'].cpu(),
                                                   'scores': pred['scores'].cpu()}
 
+def train(arguement):
+    trainset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
+                                                   set='train',
+                                                   transforms=[T.RandomHorizontalFlip(0.5)])
 
-def train():
-    pass
+    print(f' Length of the training loader {len(trainset_detection)}')
+
+    data_loader = torch.utils.data.DataLoader(trainset_detection,
+                                              batch_size=2,
+                                              shuffle=True,
+                                              num_workers=4,
+                                              collate_fn=util.collate_fn
+                                              )
+
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    num_classes = trainset_detection.get_num_classes() + 1
+    model = get_detection_model(num_classes)
+
+    model.to(device)
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.Adam(params, lr=0.005)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+                                                   step_size=3,
+                                                   gamma=0.1)
+
+    # let's train it for 10 epochs
+    num_epochs = 10
+    for epoch in range(num_epochs):
+        # train for one epoch, printing every 10 iterations
+        train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
+        # update the learning rate
+        lr_scheduler.step()
+        # evaluate on the test dataset
+        evaluate(model, data_loader, device=device)
 
 def test():
-    pass
+    testset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
+                                                   set='test',
+                                                   transforms=None)
+
+    data_loader = torch.utils.data.DataLoader(testset_detection,
+                                              batch_size=2,
+                                              shuffle=True,
+                                              num_workers=4,
+                                              collate_fn=util.collate_fn
+                                              )
+
 
 if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
 
-    '''
-    train_set = VideoVRDLoader(data_path=parse_options.data_path,
-                               set='train',
-                               transforms=None)
-    '''
-    trainset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
-                                               set='train',
-                                               transforms=get_transform(True))
-
-    # Use ResNet-16
-    detector_model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
-
-    for i in range(10):
-        frame, target = trainset_detection[i]
+    train(parse_options)

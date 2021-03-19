@@ -13,6 +13,9 @@ from dataset.image_transform import ImglistToTensor
 from model.helper.utility import add_bbox, add_straight_line
 from model.helper.utility import generate_random_colour, _COLOR_NAME_TO_RGB
 from collections import defaultdict
+import model.helper.vision.transforms as T
+
+import torch
 
 class VideoVRDDataset(GeneralDataset):
 
@@ -229,13 +232,6 @@ class VideoVRDDataset(GeneralDataset):
     def get_segment_size(self):
         return self._frame_per_segment
 
-    def __len__(self):
-        return len(self.video_names)
-
-    def __str__(self):
-        return f'This is VideoVRD loader of length {self.__len__()}'
-
-
 
 # This is virtuall the same class as VidVrd, except that it returns one image for training
 
@@ -251,13 +247,14 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
 
         self._frame_per_segment = frames_per_segment
 
+        self.isTrain = True if set.lower() == 'train' else False
         self.video_names = []  # Name [name1, name2 ... name_n]
         self._videos_frames = []  # Video frames path [ [video1 frames1]... [vidoo frames n] ]
 
-        self._image_frames = []
         self._bbs_info = []  # Bounding Boxes [ [xmin ymin xmax ymax] ... [] ]
         self._classes = []  # Classes [ [ cls1_f1.. cls_n_f1], [cls2...]....]
         self._classes_info = []  # A dictionary that maps number to class
+
 
         self._heights, self._widths = [], []
 
@@ -287,51 +284,83 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
             self._widths.append(info['width'])
 
             # Only keep the frames with Boxes
-            tem_vfp = [video_frame_path[i] for i in range(len(info['trajectories']))]
-            video_frame_path = tem_vfp
-
-            assert len(info["trajectories"]) == len(
-                video_frame_path), "Number of trajectories should equal to video frame path"
+            #tem_vfp = [video_frame_path[i] for i in range(len(info['trajectories']))]
+            #video_frame_path = tem_vfp
+            #assert len(info["trajectories"]) == len(
+            #    video_frame_path), "Number of trajectories should equal to video frame path"
 
             this_objid = {so["tid"]: so["category"] for so in info["subject/objects"]}
-            _bb, _cls = [], []
+            temp_vfp = []
 
+            _bb, _cls = [], []
             for idx, traj in enumerate(info["trajectories"]):
-                if np.equal(len(traj), 0):
-                    _bb.append([0,0,0,0])
-                    _cls.append([0])
-                else:
-                    _bbsub, _clssub = {}, []
+                if not np.equal(len(traj), 0):
+                    temp_vfp.append(video_frame_path[idx])
+                    _sub_bb, _sub_cls = [], []
                     for t in traj:
-                        self._bbs_info.append([t["bbox"]["xmin"],
+                        _sub_bb.append([t["bbox"]["xmin"],
                                     t["bbox"]["ymin"],
                                     t["bbox"]["xmax"],
                                     t["bbox"]["ymax"]])
-                        self._classes.append(t["tid"])
+
+                        _sub_cls.append(this_objid[t["tid"]])
+                    _bb.append(_sub_bb)
+                    _cls.append(_sub_cls)
 
             self.video_names.append(video_id)
+            video_frame_path = temp_vfp
+
+            assert len(video_frame_path)== len(_bb)==len(_cls)
             self._videos_frames += video_frame_path
+            self._bbs_info += _bb
+            self._classes += _cls
+
             self._classes_info.append(this_objid)
 
+        self.all_classes_in_single = self.reassign_class()
         self._vis_threshold = _vis_threshold
         self.transforms = transforms
+        assert len(self._videos_frames)==len(self._bbs_info)==len(self._classes)
+
+    def reassign_class(self):
+        print('Counting number of classes...')
+        total_class = []
+        for c in self._classes:
+            c = list(set(c))
+            total_class += c
+        total_class = sorted(list(set(total_class)))
+
+        total_class_with_num = {class_name: index for index, class_name in enumerate(total_class)}
+        print(f'Total number of class : {len(total_class)}, {total_class_with_num}')
+
+        return total_class_with_num
 
     @property
     def num_classes(self):
         return len(self._classes)
 
     def __getitem__(self, idx):
-        blob = self._get(idx)
 
-        '''
-        # Should return a list of images
-        video = blob['record']
-        frames = self.gives_stack_of_frames(video)
-        blob["video_frames"] = None
-        if self.transforms:
-            pass
-        '''
-        return blob
+        img_path = self._videos_frames[idx]
+        img = self._load_frames([img_path])[0]
+        bb = torch.as_tensor(self._bbs_info[idx], dtype=torch.float32)
+        labels = torch.as_tensor([self.all_classes_in_single[c] for c in self._classes[idx]], dtype=torch.int64)
+
+        target = {}
+        target["boxes"] = bb
+        target["labels"] = labels
+
+        temptrans = None
+        temptrans = []
+        temptrans.append(T.ToTensor())
+        if self.transforms is not None:
+            if self.isTrain:
+                for t in self.transforms:
+                    temptrans.append(t)
+
+        transfunc = T.Compose(temptrans)
+        img, target = transfunc(img, target)
+        return img, target
 
     def _load_frames(self, frames):
         if len(frames) == 1:  # Special Case for a single frame
@@ -343,91 +372,11 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
         frames = self.ImglistToTensor(frames)
         return frames
 
-    def visualise(self, index, draw_box=True, draw_relation=True):
-        print(f'Visualising video {index}')
-        blob = self._get(index)
-
-        video = blob['record']
-        bbox = blob['bbox']
-        cls, cls_info = blob['cls'], blob['clsinfo']
-        # Assign Colour for class
-        cls_colour = {k: np.random.choice(list(_COLOR_NAME_TO_RGB.keys())) for k in cls_info.keys()}
-
-        relation = blob['relins']
-        # Relation Colour
-        relation_colours = defaultdict(str)
-
-        # Resizing the frame first
-        height, width = blob['height'], blob['width']
-
-        boundary = 0
-        for i, (frame, bbox, cl, rel) in enumerate(zip(video, bbox, cls, relation)):
-
-            # PUT Torch tensor back to numpy array
-            frame = self.gives_stack_of_frames([frame])[0]
-            frame = frame.numpy().transpose(1, 2, 0)
-            frame = frame[:, :, ::-1]
-
-            # Resize the video
-            ratio = 720.0 / height
-            size = int(round(width * ratio)) + 2 * boundary, int(round(height * ratio)) + 2 * boundary
-            frame = cv2.resize(frame, (size[0] - 2 * boundary, size[1] - 2 * boundary))
-
-            if draw_box:
-                for c, b in bbox.items():
-                    if b != [-1, -1, -1, -1] and c != -1:
-                        frame = add_bbox(frame,
-                                         int(round(b[0] * ratio)),
-                                         int(round(b[1] * ratio)),
-                                         int(round(b[2] * ratio)),
-                                         int(round(b[3] * ratio)),
-                                         color=str(cls_colour[c]))
-
-            if draw_relation:
-                if -1 not in bbox:
-                    for r in rel:
-
-                        this_colour = None
-                        if r[1] in relation_colours:
-                            this_colour = relation_colours[r[1]]
-                        else:
-                            relation_colours[r[1]] = generate_random_colour()
-                            this_colour = relation_colours[r[1]]
-
-                        try:
-                            sub_cord = bbox[r[0]]  # subject coordinate
-                            sub_center_x, sub_center_y = int(round((sub_cord[0] + sub_cord[2]) / 2) * ratio), int(
-                                round((sub_cord[1] + sub_cord[3]) / 2) * ratio)
-                            sub_name = cls_info[r[0]]
-                        except KeyError:
-                            print(f'Subject ID has no detection at Video {index} frame {i} ')
-                            continue
-                        try:
-                            obj_cord = bbox[r[2]]  # object coordinates
-                            obj_center_x, obj_center_y = int(round((obj_cord[0] + obj_cord[2]) / 2) * ratio), int(
-                                round((obj_cord[1] + obj_cord[3]) / 2) * ratio)
-                            obj_name = cls_info[r[2]]
-                        except:
-                            print(f'Object ID has no detection at Video {index} frame {i}')
-                            continue
-
-                        predicate = r[1]
-                        subject_centre = (sub_center_x, sub_center_y)
-                        object_centre = (obj_center_x, obj_center_y)
-                        frame = add_straight_line(frame, subject_centre, object_centre, sub_name, obj_name,
-                                                  predicate, this_colour)
-
-            cv2.imshow('Color image', frame)
-            cv2.waitKey(2)
-
-        cv2.destroyAllWindows()
-        return None
-
     def get_segment_size(self):
         return self._frame_per_segment
 
-    def __len__(self):
-        return f'Numer of video {len(self.video_names)} \n Number of Bounding Box {len(self._bbs_info)} \n Number of Classes {len(self._classes)}'
+    def get_num_classes(self):
+        return len(self.all_classes_in_single)
 
-    def __str__(self):
-        return f'This is VideoVRD loader of length {self.__len__()}'
+    def __len__(self):
+        return len(self._videos_frames)

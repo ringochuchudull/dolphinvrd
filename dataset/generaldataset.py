@@ -20,9 +20,6 @@ class GeneralDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         return None
 
-    def __len__(self):
-        return len(self._img_paths)
-
     def __str__(self):
         return 'This is General Detection LOADER'
 
