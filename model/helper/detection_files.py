@@ -132,6 +132,7 @@ def train(arguement):
         # evaluate on the test dataset
         evaluate(model, data_loader, device=device)
 
+
 def test():
     testset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
                                                    set='test',
@@ -149,4 +150,12 @@ if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
 
+
+    trainset_detection = VideoVRDDataset(data_path=parse_options.data_path,
+                                               set='train')
+
+    for i in range(200,201):
+        trainset_detection.visualise(i)
+    '''
     train(parse_options)
+    '''

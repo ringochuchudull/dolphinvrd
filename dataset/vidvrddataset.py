@@ -232,6 +232,7 @@ class VideoVRDDataset(GeneralDataset):
     def get_segment_size(self):
         return self._frame_per_segment
 
+#############################
 
 # This is virtuall the same class as VidVrd, except that it returns one image for training
 
