@@ -1,33 +1,10 @@
 '''
 Author: Ringo S W Chu, Peter Hohin Lee, Winson Luk
-Prerequisite:
-    1. Put these two lines in your terminal/command prompt
-    pip install cython
-    pip install -U 'git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI'
-    2. Download TorchVision repo to use some files from references/detection
-    git clone https://github.com/pytorch/vision.git
-    cd vision
-    git checkout v0.3.0
-    cp references/detection/utils.py ../
-    cp references/detection/transforms.py ../
-    cp references/detection/coco_eval.py ../
-    cp references/detection/engine.py ../
-    cp references/detection/coco_utils.py ../
-    2. Referencing Material
-    Revised from here: https://pytorch.org/tutorials/intermediate/torchvision_tutorial.html
-Note:
-    1. Geometric clarification
-    Your rectangle Box with top-left, top-right
-    For example:
-    idno = bb_info['Identity']
-    tl, tr = np.rint(bb_info['Bounding Box left']), np.rint(bb_info['Bounding Box top'])
-    tl, tr = tl.astype(int), tr.astype(int)
-    height, width = np.rint(bb_info['Bounding box height']), np.rint(bb_info['Bounding box width'])
-    height, width = height.astype(int), width.astype(int)
-    p1, p2 = (tl, tr-height), (tl+width, tr)
 '''
 
 from __future__ import absolute_import, division, print_function
+
+import os
 
 import numpy as np
 import torch
@@ -41,6 +18,7 @@ from dataset.vidvrddataset import VideoVRDDataset, ObjectDetectVidVRDDataset
 import model.helper.vision.transforms as T
 import model.helper.vision.utils as util
 from model.helper.vision.engine import train_one_epoch, evaluate
+from model.helper.utility import cpu_or_gpu
 
 def get_instance_segmentation_model_v2(num_classes):
     # load an instance segmentation model pre-trained on COCO
@@ -98,7 +76,7 @@ def evaluate_and_write_result_files(model, data_loader):
                                                   'scores': pred['scores'].cpu()}
 
 def train(arguement):
-    trainset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
+    trainset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
                                                    set='train',
                                                    transforms=[T.RandomHorizontalFlip(0.5)])
 
@@ -111,11 +89,11 @@ def train(arguement):
                                               collate_fn=util.collate_fn
                                               )
 
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    device = cpu_or_gpu(arguement.device) # torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     num_classes = trainset_detection.get_num_classes() + 1
     model = get_detection_model(num_classes)
-
     model.to(device)
+
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(params, lr=0.005)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
@@ -123,7 +101,7 @@ def train(arguement):
                                                    gamma=0.1)
 
     # let's train it for 10 epochs
-    num_epochs = 10
+    num_epochs = 11
     for epoch in range(num_epochs):
         # train for one epoch, printing every 10 iterations
         train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
@@ -132,6 +110,12 @@ def train(arguement):
         # evaluate on the test dataset
         evaluate(model, data_loader, device=device)
 
+        if epoch+1 % 5 == 0:
+            every_parameter = {'epoch': epoch,
+                              'model_state_dict': model.state_dict(),
+                              'optimizer_state_dict': optimizer.state_dict()
+                              }
+            torch.save(every_parameter, os.path.join(arguement.model_path, f"vidvrd_detector_{epoch}.pth"))
 
 def test():
     testset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
@@ -150,12 +134,11 @@ if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
 
-
     trainset_detection = VideoVRDDataset(data_path=parse_options.data_path,
                                                set='train')
-
+    '''
     for i in range(200,201):
         trainset_detection.visualise(i)
     '''
     train(parse_options)
-    '''
+

@@ -102,9 +102,24 @@ class GeneralParser:
         self.parser.add_argument("--data_path",
                                  type=str,
                                  help="path to data, please note this path is an absolute path",
-                                 default=os.path.join("dataset", "DOLPHIN"))
+                                 default=os.path.join("dataset", "video-vrd"))
 
-    @staticmethod
+        # PATHS
+        self.parser.add_argument("--model_path",
+                                 type=str,
+                                 help="Path to your detection model .pth file(Leave blank if none)",
+                                 default=os.path.join("model","helper","param"))
+
+        self.parser.add_argument("--device",
+                                 type=str,
+                                 help="Select your device to run your model/ CUDA/CPU",
+                                 default='cpu')
+
+    def cpu_or_gpu(self):
+        pass
+
+
+
     def str2bool(v):
         if isinstance(v, bool):
            return v
@@ -125,6 +140,7 @@ class GeneralParser:
         self.options = self.parser.parse_args()
         _ = self.dir_path(self.options.data_path)
         return self.options
+
 
 
 if __name__ == '__main__':

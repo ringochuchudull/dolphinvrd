@@ -19,6 +19,17 @@ from hashlib import md5 as _md5
 
 #_LOC = _path.realpath(_path.join(_os.getcwd(),_path.dirname(__file__)))
 
+import torch
+def cpu_or_gpu(device):
+    if (device.lower() in ['cuda', 'gpu']) and torch.cuda.is_available():
+        device = torch.device('cuda')
+    #elif torch.cuda.is_available():
+    #    device = torch.device('cuda')
+    else:
+        device = torch.device('cpu')
+
+    return device
+
 def git_root(*args):
     import subprocess
     import os
