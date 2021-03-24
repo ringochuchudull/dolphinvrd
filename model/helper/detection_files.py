@@ -37,14 +37,11 @@ def get_instance_segmentation_model_v2(num_classes):
 def get_detection_model(num_classes):
     # load an instance segmentation model pre-trained on COCO
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
-
     # get the number of input features for the classifier
     in_features = model.roi_heads.box_predictor.cls_score.in_features
-
     # replace the pre-trained head with a new one
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-
-    model.roi_heads.nms_thresh = 0.45
+    model.roi_heads.nms_thresh = 0.40
 
     return model
 
@@ -79,23 +76,45 @@ def train(arguement):
     trainset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
                                                    set='train',
                                                    transforms=[T.RandomHorizontalFlip(0.5)])
-
     print(f' Length of the training loader {len(trainset_detection)}')
 
-    data_loader = torch.utils.data.DataLoader(trainset_detection,
+
+    testset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
+                                                   set='test',
+                                                   transforms=None)
+    print(f' Length of the Testing loader {len(testset_detection)}')
+
+    debug= True
+    if debug:
+        # split the dataset in train and test set
+        torch.manual_seed(1)
+        indices = torch.randperm(len(trainset_detection)).tolist()
+        trainset_detection = torch.utils.data.Subset(trainset_detection, indices[:500])
+        testset_detection = torch.utils.data.Subset(testset_detection, indices[-500:])
+
+        print(f'Debugging detection training: {len(trainset_detection)}, {len(testset_detection)}')
+
+    data_loader_train = torch.utils.data.DataLoader(trainset_detection,
                                               batch_size=2,
                                               shuffle=True,
-                                              num_workers=2,
+                                              num_workers=4,
+                                              collate_fn=util.collate_fn
+                                              )
+    data_loader_test = torch.utils.data.DataLoader(testset_detection,
+                                              batch_size=2,
+                                              shuffle=True,
+                                              num_workers=4,
                                               collate_fn=util.collate_fn
                                               )
 
+
     device = cpu_or_gpu(arguement.device) # torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    num_classes = trainset_detection.get_num_classes() + 1
+    num_classes = 35 + 1
     model = get_detection_model(num_classes)
     model.to(device)
 
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.Adam(params, lr=0.005)
+    optimizer = torch.optim.Adam(params, lr=0.01)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                                    step_size=3,
                                                    gamma=0.1)
@@ -103,19 +122,22 @@ def train(arguement):
     # let's train it for 10 epochs
     num_epochs = 11
     for epoch in range(num_epochs):
+
         # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
+        train_one_epoch(model, optimizer, data_loader_train, device, epoch, print_freq=10)
+        
         # update the learning rate
         lr_scheduler.step()
-        # evaluate on the test dataset
-        evaluate(model, data_loader, device=device)
 
-        if epoch+1 % 2 == 0:
-            every_parameter = {'epoch': epoch,
-                              'model_state_dict': model.state_dict(),
-                              'optimizer_state_dict': optimizer.state_dict()
-                              }
-            torch.save(every_parameter, os.path.join(arguement.model_path, f"vidvrd_detector_{epoch}.pth"))
+        # evaluate on the test dataset
+        evaluate(model, data_loader_test, device=device)
+
+        # Save the model
+        every_parameter = {'epoch': epoch,
+                          'model_state_dict': model.state_dict(),
+                          'optimizer_state_dict': optimizer.state_dict()
+                          }
+        torch.save(every_parameter, os.path.join(arguement.model_path, f"vidvrd_detector_{epoch}.pth"))
 
 def test():
     testset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
@@ -129,13 +151,20 @@ def test():
                                               collate_fn=util.collate_fn
                                               )
 
+def debug_func(arguement):
+    trainset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
+                                                   set='train',
+                                                   transforms=[T.RandomHorizontalFlip(0.5)])
+
+    print(f' Length of the training loader {len(trainset_detection)}')
+
+    for i in range(len(trainset_detection)):
+        trainset_detection.visualise(i)
 
 if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
 
-    trainset_detection = VideoVRDDataset(data_path=parse_options.data_path,
-                                               set='train')
     '''
     for i in range(200,201):
         trainset_detection.visualise(i)

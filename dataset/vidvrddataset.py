@@ -232,8 +232,8 @@ class VideoVRDDataset(GeneralDataset):
     def get_segment_size(self):
         return self._frame_per_segment
 
-#############################
 
+#############################
 # This is virtuall the same class as VidVrd, except that it returns one image for training
 
 class ObjectDetectVidVRDDataset(VideoVRDDataset):
@@ -255,7 +255,6 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
         self._bbs_info = []  # Bounding Boxes [ [xmin ymin xmax ymax] ... [] ]
         self._classes = []  # Classes [ [ cls1_f1.. cls_n_f1], [cls2...]....]
         self._classes_info = []  # A dictionary that maps number to class
-
 
         self._heights, self._widths = [], []
 
@@ -284,12 +283,6 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
             self._heights.append(info['height'])
             self._widths.append(info['width'])
 
-            # Only keep the frames with Boxes
-            #tem_vfp = [video_frame_path[i] for i in range(len(info['trajectories']))]
-            #video_frame_path = tem_vfp
-            #assert len(info["trajectories"]) == len(
-            #    video_frame_path), "Number of trajectories should equal to video frame path"
-
             this_objid = {so["tid"]: so["category"] for so in info["subject/objects"]}
             temp_vfp = []
 
@@ -303,7 +296,6 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
                                     t["bbox"]["ymin"],
                                     t["bbox"]["xmax"],
                                     t["bbox"]["ymax"]])
-
                         _sub_cls.append(this_objid[t["tid"]])
                     _bb.append(_sub_bb)
                     _cls.append(_sub_cls)
@@ -315,13 +307,17 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
             self._videos_frames += video_frame_path
             self._bbs_info += _bb
             self._classes += _cls
-
             self._classes_info.append(this_objid)
 
-        self.all_classes_in_single = self.reassign_class()
+        # Count the number of the class
+        self.all_classes_in_single = self.reassign_class() #{class_name: number}
+        self.class_id_to_name = {v: k for k, v in self.all_classes_in_single.items()}
+
         self._vis_threshold = _vis_threshold
         self.transforms = transforms
         assert len(self._videos_frames)==len(self._bbs_info)==len(self._classes)
+
+        print(f'Total number of clases{self.get_num_classes()}')
 
     def reassign_class(self):
         print('Counting number of classes...')
@@ -330,15 +326,15 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
             c = list(set(c))
             total_class += c
         total_class = sorted(list(set(total_class)))
-
-        total_class_with_num = {class_name: index for index, class_name in enumerate(total_class)}
+        total_class_with_num = {class_name: index+1 for index, class_name in enumerate(total_class)}
         print(f'Total number of class : {len(total_class)}, {total_class_with_num}')
-
         return total_class_with_num
 
-    @property
-    def num_classes(self):
-        return len(self._classes)
+    def get_num_classes(self):
+        return len(self.all_classes_in_single)
+
+    def __len__(self):
+        return len(self._videos_frames)
 
     def __getitem__(self, idx):
 
@@ -347,11 +343,17 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
         bb = torch.as_tensor(self._bbs_info[idx], dtype=torch.float32)
         labels = torch.as_tensor([self.all_classes_in_single[c] for c in self._classes[idx]], dtype=torch.int64)
 
+        image_id = torch.tensor([idx])
+        area = (bb[:, 3] - bb[:, 1]) * (bb[:, 2] - bb[:, 0])
+        iscrowd = torch.zeros((len(labels),), dtype=torch.int64)
+
         target = {}
         target["boxes"] = bb
         target["labels"] = labels
+        target["image_id"] = image_id
+        target["area"] = area
+        target["iscrowd"] = iscrowd
 
-        temptrans = None
         temptrans = []
         temptrans.append(T.ToTensor())
         if self.transforms is not None:
@@ -363,21 +365,27 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
         img, target = transfunc(img, target)
         return img, target
 
-    def _load_frames(self, frames):
-        if len(frames) == 1:  # Special Case for a single frame
-            return [Image.open(frames[0])]
-        return [Image.open(f) for f in frames]
+    def visualise(self, index, draw_box=True):
+        print(f'Visualising video {index}')
+        img, target = self.__getitem__(index)
+        #img = img.cpu().detach().numpy()
+        bb, labels = target['boxes'], target['labels']
+        bb, labels = list(bb.cpu().detach().numpy()), list(labels.cpu().detach().numpy())
 
-    def gives_stack_of_frames(self, frames):
-        frames = self._load_frames(frames)
-        frames = self.ImglistToTensor(frames)
-        return frames
+        # PUT Torch tensor back to numpy array
+        img = img.cpu().numpy().transpose(1, 2, 0)
+        img = img[:, :, ::-1]
+        img = cv2.UMat(img).get()
 
-    def get_segment_size(self):
-        return self._frame_per_segment
+        for c, b in zip(labels, bb):
+            label_name = self.class_id_to_name[c]
+            img = add_bbox(img,
+                           int(round(b[0])),
+                           int(round(b[1])),
+                           int(round(b[2])),
+                           int(round(b[3])),
+                         color='orange',
+                         label=label_name)
 
-    def get_num_classes(self):
-        return len(self.all_classes_in_single)
-
-    def __len__(self):
-        return len(self._videos_frames)
+        cv2.imshow('Video', img)
+        cv2.waitKey(10)
