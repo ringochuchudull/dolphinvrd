@@ -80,7 +80,6 @@ def train(arguement):
                                                    transforms=[T.RandomHorizontalFlip(0.5)])
     print(f' Length of the training loader {len(trainset_detection)}')
 
-
     testset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
                                                    set='test',
                                                    transforms=None)
@@ -144,8 +143,9 @@ def train(arguement):
         torch.save(every_parameter, os.path.join(arguement.model_path, f"vidvrd_detector_{epoch}.pth"))
 
         # evaluate on the test dataset
-        print(f'\tFinish Training Epoch: {epoch}, now evaluate')
-        evaluate(model, data_loader_test, device=device)
+        if epoch + 1 % 2 == 0:
+            print(f'\tFinish Training Epoch: {epoch}, now evaluate')
+            evaluate(model, data_loader_test, device=device)
 
 def test():
     testset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
@@ -184,6 +184,6 @@ if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
     
-    debug_func(parse_options)
-    #train(parse_options)
+    #debug_func(parse_options)
+    train(parse_options)
 
