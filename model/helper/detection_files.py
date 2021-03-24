@@ -84,7 +84,7 @@ def train(arguement):
                                                    set='test',
                                                    transforms=None)
     print(f' Length of the Testing loader {len(testset_detection)}')
-
+ 
     debug= True
     if debug:
         # split the dataset in train and test set
@@ -99,14 +99,14 @@ def train(arguement):
 
     data_loader_train = torch.utils.data.DataLoader(trainset_detection,
                                               batch_size=1,
-                                              shuffle=True,
-                                              num_workers=4,
+                                              shuffle=False,
+                                              num_workers=2,
                                               collate_fn=util.collate_fn
                                               )
     data_loader_test = torch.utils.data.DataLoader(testset_detection,
                                               batch_size=1,
                                               shuffle=True,
-                                              num_workers=4,
+                                              num_workers=2,
                                               collate_fn=util.collate_fn
                                               )
 
@@ -129,7 +129,7 @@ def train(arguement):
     for epoch in range(num_epochs):
         
         # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, data_loader_train, device, epoch, print_freq=10)
+        train_one_epoch(model, optimizer, data_loader_train, device, epoch, print_freq=20)
         
         # update the learning rate
         lr_scheduler.step()
@@ -143,9 +143,9 @@ def train(arguement):
         torch.save(every_parameter, os.path.join(arguement.model_path, f"vidvrd_detector_{epoch}.pth"))
 
         # evaluate on the test dataset
-        if epoch + 1 % 2 == 0:
+        if (epoch + 1) % 2 == 0:
             print(f'\tFinish Training Epoch: {epoch}, now evaluate')
-            evaluate(model, data_loader_test, device=device)
+            evaluate(model, data_loader_train, device=device)
 
 def test():
     testset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
