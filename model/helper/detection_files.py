@@ -20,6 +20,8 @@ import model.helper.vision.utils as util
 from model.helper.vision.engine import train_one_epoch, evaluate
 from model.helper.utility import cpu_or_gpu
 
+from tensorboardX import SummaryWriter
+
 def get_instance_segmentation_model_v2(num_classes):
     # load an instance segmentation model pre-trained on COCO
     model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
@@ -89,19 +91,21 @@ def train(arguement):
         # split the dataset in train and test set
         torch.manual_seed(1)
         indices = torch.randperm(len(trainset_detection)).tolist()
-        trainset_detection = torch.utils.data.Subset(trainset_detection, indices[:500])
-        testset_detection = torch.utils.data.Subset(testset_detection, indices[-500:])
+        trainset_detection = torch.utils.data.Subset(trainset_detection, indices[:50])
+
+        indices = torch.randperm(len(testset_detection)).tolist()
+        testset_detection = torch.utils.data.Subset(testset_detection, indices[-50:])
 
         print(f'Debugging detection training: {len(trainset_detection)}, {len(testset_detection)}')
 
     data_loader_train = torch.utils.data.DataLoader(trainset_detection,
-                                              batch_size=2,
+                                              batch_size=1,
                                               shuffle=True,
                                               num_workers=4,
                                               collate_fn=util.collate_fn
                                               )
     data_loader_test = torch.utils.data.DataLoader(testset_detection,
-                                              batch_size=2,
+                                              batch_size=1,
                                               shuffle=True,
                                               num_workers=4,
                                               collate_fn=util.collate_fn
@@ -114,22 +118,26 @@ def train(arguement):
     model.to(device)
 
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.Adam(params, lr=0.01)
+    optimizer = torch.optim.Adam(params, lr=0.001)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                   step_size=3,
+                                                   step_size=1,
                                                    gamma=0.1)
+    
+    writer_tbx = SummaryWriter()
 
     # let's train it for 10 epochs
     num_epochs = 11
     for epoch in range(num_epochs):
-
+        
         # train for one epoch, printing every 10 iterations
         train_one_epoch(model, optimizer, data_loader_train, device, epoch, print_freq=10)
         
         # update the learning rate
         lr_scheduler.step()
+        
 
         # evaluate on the test dataset
+        print(f'\tFinish Training Epoch: {epoch}, now evaluate')
         evaluate(model, data_loader_test, device=device)
 
         # Save the model
@@ -158,16 +166,21 @@ def debug_func(arguement):
 
     print(f' Length of the training loader {len(trainset_detection)}')
 
+    testset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
+                                                  set='test')
+
+    print(f' Length of Testing Loader{len(testset_detection)}')
+
     for i in range(len(trainset_detection)):
-        trainset_detection.visualise(i)
+        print(f'loading training index {i}')
+
+    for i in range(len(testset_detection)):
+        print(f'loading testing index {i}')
 
 if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
-
-    '''
-    for i in range(200,201):
-        trainset_detection.visualise(i)
-    '''
+    
+    #debug_func(parse_options)
     train(parse_options)
 

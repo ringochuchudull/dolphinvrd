@@ -33,7 +33,8 @@ def main():
     data_path = parse_aug.data_path
     print(f'Your path to data is: {data_path}')
 
-    train_test_set = 'train'
+    #Set this variable to either 'train'/'test'
+    train_test_set = 'test'
 
     #Json location
     all_json_annotation = sorted(glob.glob(os.path.join(data_path, train_test_set ,'*.json')))
