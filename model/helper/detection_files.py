@@ -85,7 +85,7 @@ def train(arguement):
     data_loader = torch.utils.data.DataLoader(trainset_detection,
                                               batch_size=2,
                                               shuffle=True,
-                                              num_workers=4,
+                                              num_workers=2,
                                               collate_fn=util.collate_fn
                                               )
 
@@ -110,7 +110,7 @@ def train(arguement):
         # evaluate on the test dataset
         evaluate(model, data_loader, device=device)
 
-        if epoch+1 % 5 == 0:
+        if epoch+1 % 2 == 0:
             every_parameter = {'epoch': epoch,
                               'model_state_dict': model.state_dict(),
                               'optimizer_state_dict': optimizer.state_dict()
