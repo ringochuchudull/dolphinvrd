@@ -134,18 +134,18 @@ def train(arguement):
         
         # update the learning rate
         lr_scheduler.step()
-        
 
-        # evaluate on the test dataset
-        print(f'\tFinish Training Epoch: {epoch}, now evaluate')
-        evaluate(model, data_loader_test, device=device)
-
+        print('Saving the parameter')
         # Save the model
         every_parameter = {'epoch': epoch,
                           'model_state_dict': model.state_dict(),
                           'optimizer_state_dict': optimizer.state_dict()
                           }
         torch.save(every_parameter, os.path.join(arguement.model_path, f"vidvrd_detector_{epoch}.pth"))
+
+        # evaluate on the test dataset
+        print(f'\tFinish Training Epoch: {epoch}, now evaluate')
+        evaluate(model, data_loader_test, device=device)
 
 def test():
     testset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
@@ -177,10 +177,13 @@ def debug_func(arguement):
     for i in range(len(testset_detection)):
         print(f'loading testing index {i}')
 
+    for i in range(0, 300):
+        testset_detection.visualise(i)
+
 if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
     
-    #debug_func(parse_options)
-    train(parse_options)
+    debug_func(parse_options)
+    #train(parse_options)
 
