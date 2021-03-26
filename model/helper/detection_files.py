@@ -24,8 +24,8 @@ from tensorboardX import SummaryWriter
 
 def get_instance_segmentation_model_v2(num_classes):
     # load an instance segmentation model pre-trained on COCO
-    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
-
+    #model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
+    model = torchvision.models.detection.maskrcnn_resnet101_fpn(pretrained=True)
     # get the number of input features for the classifier
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     # replace the pre-trained head with a new one
@@ -38,7 +38,7 @@ def get_instance_segmentation_model_v2(num_classes):
 
 def get_detection_model(num_classes):
     # load an instance segmentation model pre-trained on COCO
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    model = torchvision.models.detection.fasterrcnn_resnet101_fpn(pretrained=True)
     # get the number of input features for the classifier
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     # replace the pre-trained head with a new one
@@ -153,11 +153,13 @@ def test():
                                                    transforms=None)
 
     data_loader = torch.utils.data.DataLoader(testset_detection,
-                                              batch_size=2,
+                                              batch_size=1,
                                               shuffle=True,
-                                              num_workers=4,
+                                              num_workers=2,
                                               collate_fn=util.collate_fn
                                               )
+
+
 
 def debug_func(arguement):
     trainset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
