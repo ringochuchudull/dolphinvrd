@@ -47,6 +47,14 @@ def get_detection_model(num_classes):
 
     return model
 
+def get_fasterrcnn_resnet_101(num_classes):
+    from torchvision.models.detection.backbone_utils import resnet_fpn_backbone 
+    #from torchvision.models.detection.backbone_utils import _validate_trainable_layers
+
+    trainable_backbone_layers = torchvision.models.detection._validate_trainable_layers(True, None, 5, 3)
+
+    backbone = resnet_fpn_backbone('resnet101', pretrained_backbone, trainable_layers=trainable_backbone_layers)
+    model = torchvision.models.detection.FasterRCNN(backbone, num_classes, **kwargs)
 
 # torchvision.transforms.ColorJitter(brightness=0, contrast=0, saturation=0, hue=0)
 
@@ -162,6 +170,7 @@ def test():
 
 
 def debug_func(arguement):
+    '''
     trainset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
                                                    set='train',
                                                    transforms=[T.RandomHorizontalFlip(0.5)])
@@ -170,22 +179,26 @@ def debug_func(arguement):
 
     testset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
                                                   set='test')
-
+    
     print(f' Length of Testing Loader{len(testset_detection)}')
+    '''
 
-    for i in range(len(trainset_detection)):
-        print(f'loading training index {i}')
+    get_fasterrcnn_resnet_101(36)
 
-    for i in range(len(testset_detection)):
-        print(f'loading testing index {i}')
-
-    for i in range(0, 300):
-        testset_detection.visualise(i)
+    '''
+    resenet101 = torchvision.models.resnet101(pretrained=True)
+    model = torchvision.models.detection.fasterrcnn_resnet101_fpn(pretrained=True)
+    # get the number of input features for the classifier
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    # replace the pre-trained head with a new one
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+    model.roi_heads.nms_thresh = 0.40
+    '''
 
 if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
     
-    #debug_func(parse_options)
-    train(parse_options)
+    debug_func(parse_options)
+    #train(parse_options)
 
