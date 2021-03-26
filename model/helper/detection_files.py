@@ -85,7 +85,7 @@ def train(arguement):
                                                    transforms=None)
     print(f' Length of the Testing loader {len(testset_detection)}')
  
-    debug= True
+    debug= False
     if debug:
         # split the dataset in train and test set
         torch.manual_seed(1)
@@ -145,7 +145,7 @@ def train(arguement):
         # evaluate on the test dataset
         if (epoch + 1) % 2 == 0:
             print(f'\tFinish Training Epoch: {epoch}, now evaluate')
-            evaluate(model, data_loader_train, device=device)
+            #evaluate(model, data_loader_train, device=device)
 
 def test():
     testset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
