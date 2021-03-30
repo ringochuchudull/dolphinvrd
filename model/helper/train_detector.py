@@ -22,6 +22,14 @@ from model.helper.utility import cpu_or_gpu
 
 from tensorboardX import SummaryWriter
 
+model_urls = {
+    'fasterrcnn_resnet50_fpn_coco':
+        'https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth',
+    'fasterrcnn_mobilenet_v3_large_320_fpn_coco':
+        'https://download.pytorch.org/models/fasterrcnn_mobilenet_v3_large_320_fpn-907ea3f9.pth',
+    'fasterrcnn_mobilenet_v3_large_fpn_coco':
+        'https://download.pytorch.org/models/fasterrcnn_mobilenet_v3_large_fpn-fb6a3cc7.pth'
+}
 def get_instance_segmentation_model_v2(num_classes):
     # load an instance segmentation model pre-trained on COCO
     #model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
@@ -49,13 +57,22 @@ def get_detection_model(num_classes):
 
 def get_fasterrcnn_resnet_101(num_classes):
     from torchvision.models.detection.backbone_utils import resnet_fpn_backbone 
-    from torchvision.models.detection.backbone_utils import _validate_trainable_layers
+    #from torchvision.models.detection.backbone_utils import _validate_trainable_layers
 
     #trainable_backbone_layers = torchvision.models.detection._validate_trainable_layers(True, None, 5, 3)
 
     #backbone = resnet_fpn_backbone('resnet101', pretrained_backbone, trainable_layers=trainable_backbone_layers)
     backbone = resnet_fpn_backbone('resnet101', True)
-    model = torchvision.models.detection.FasterRCNN(backbone, num_classes)
+    model = torchvision.models.detection.FasterRCNN(backbone, num_classes=num_classes) # Default COCO Setting
+    '''
+    pretrained = True
+    if pretrained:
+        state_dict = torchvision.models.utils.load_state_dict_from_url(model_urls['fasterrcnn_resnet50_fpn_coco'],
+                                                                       progress=True)
+        model.load_state_dict(state_dict)
+        torchvision.models.detection._utils.overwrite_eps(model, 0.0)
+    '''
+    return model
 
 # torchvision.transforms.ColorJitter(brightness=0, contrast=0, saturation=0, hue=0)
 

@@ -115,11 +115,11 @@ class GeneralParser:
                                  help="Select your device to run your model/ CUDA/CPU",
                                  default='cpu')
 
-    def cpu_or_gpu(self):
-        pass
-
-
-
+        self.parser.add_argument("--debug",
+                                 type=self.str2bool,
+                                 help="Select Yes for debugging",
+                                 default=False)
+    @staticmethod
     def str2bool(v):
         if isinstance(v, bool):
            return v

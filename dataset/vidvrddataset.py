@@ -317,7 +317,7 @@ class ObjectDetectVidVRDDataset(VideoVRDDataset):
         self.transforms = transforms
         assert len(self._videos_frames)==len(self._bbs_info)==len(self._classes)
 
-        print(f'Total number of clases{self.get_num_classes()}')
+        print(f'Total number of classes: {self.get_num_classes()}')
 
     def reassign_class(self):
         print('Counting number of classes...')
