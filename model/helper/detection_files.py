@@ -38,7 +38,7 @@ def get_instance_segmentation_model_v2(num_classes):
 
 def get_detection_model(num_classes):
     # load an instance segmentation model pre-trained on COCO
-    model = torchvision.models.detection.fasterrcnn_resnet101_fpn(pretrained=True)
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
     # get the number of input features for the classifier
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     # replace the pre-trained head with a new one
@@ -51,10 +51,11 @@ def get_fasterrcnn_resnet_101(num_classes):
     from torchvision.models.detection.backbone_utils import resnet_fpn_backbone 
     #from torchvision.models.detection.backbone_utils import _validate_trainable_layers
 
-    trainable_backbone_layers = torchvision.models.detection._validate_trainable_layers(True, None, 5, 3)
+    #trainable_backbone_layers = torchvision.models.detection._validate_trainable_layers(True, None, 5, 3)
 
-    backbone = resnet_fpn_backbone('resnet101', pretrained_backbone, trainable_layers=trainable_backbone_layers)
-    model = torchvision.models.detection.FasterRCNN(backbone, num_classes, **kwargs)
+    #backbone = resnet_fpn_backbone('resnet101', pretrained_backbone, trainable_layers=trainable_backbone_layers)
+    backbone = resnet_fpn_backbone('resnet101', True)
+    model = torchvision.models.detection.FasterRCNN(backbone, num_classes)
 
 # torchvision.transforms.ColorJitter(brightness=0, contrast=0, saturation=0, hue=0)
 
