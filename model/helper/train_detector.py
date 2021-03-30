@@ -49,7 +49,7 @@ def get_detection_model(num_classes):
 
 def get_fasterrcnn_resnet_101(num_classes):
     from torchvision.models.detection.backbone_utils import resnet_fpn_backbone 
-    #from torchvision.models.detection.backbone_utils import _validate_trainable_layers
+    from torchvision.models.detection.backbone_utils import _validate_trainable_layers
 
     #trainable_backbone_layers = torchvision.models.detection._validate_trainable_layers(True, None, 5, 3)
 
@@ -156,45 +156,17 @@ def train(arguement):
             print(f'\tFinish Training Epoch: {epoch}, now evaluate')
             #evaluate(model, data_loader_train, device=device)
 
-def test():
-    testset_detection = ObjectDetectVidVRDDataset(data_path=parse_options.data_path,
-                                                   set='test',
-                                                   transforms=None)
-
-    data_loader = torch.utils.data.DataLoader(testset_detection,
-                                              batch_size=1,
-                                              shuffle=True,
-                                              num_workers=2,
-                                              collate_fn=util.collate_fn
-                                              )
-
-
 
 def debug_func(arguement):
-    '''
     trainset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
                                                    set='train',
                                                    transforms=[T.RandomHorizontalFlip(0.5)])
 
     print(f' Length of the training loader {len(trainset_detection)}')
 
-    testset_detection = ObjectDetectVidVRDDataset(data_path=arguement.data_path,
-                                                  set='test')
-    
-    print(f' Length of Testing Loader{len(testset_detection)}')
-    '''
-
     get_fasterrcnn_resnet_101(36)
 
-    '''
-    resenet101 = torchvision.models.resnet101(pretrained=True)
-    model = torchvision.models.detection.fasterrcnn_resnet101_fpn(pretrained=True)
-    # get the number of input features for the classifier
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    # replace the pre-trained head with a new one
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-    model.roi_heads.nms_thresh = 0.40
-    '''
+
 
 if __name__ == '__main__':
     parse = GeneralParser()
