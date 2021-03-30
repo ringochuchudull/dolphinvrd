@@ -19,9 +19,10 @@ import torch, torchvision
 import cv2
 
 from model.helper.parser import GeneralParser
-from model.helper.utility import cpu_or_gpu
+from model.helper.utility import cpu_or_gpu, add_bbox
 import model.helper.vision.utils as util
-from dataset.vidvrddataset import VideoVRDDataset, ObjectDetectVidVRDDataset
+
+from dataset.vidvrddataset import ObjectDetectVidVRDDataset
 
 import os, tqdm
 import numpy as np
@@ -44,28 +45,35 @@ def evaluate_COCO(dataloader, model):
 
 def visualise(datasetloader, model=None):
     for img, blob in datasetloader:
-        img, blob = img[0], blob[0]
 
-        img = _visualise_single(img)
+        img, blob = img[0], blob[0]
+        gt_boxes, gt_labels = blob['boxes'], blob['labels']
+        gt_boxes, gt_labels = list(gt_boxes.cpu().detach().numpy()), list(gt_labels.cpu().detach().numpy())
+
+        # PUT Torch tensor back to numpy array
+        img = img.cpu().numpy().transpose(1, 2, 0)
+        img = img[:, :, ::-1]
+        img = cv2.UMat(img).get()
+
+        img = _visualise_single(img, gt_boxes, gt_labels)
+
         cv2.imshow('bb_visualise', img)
         cv2.waitKey(20)
 
-def _visualise_single(img, gt_box=None, pred_box=None, gt_label=None, pred_label=None):
-    # PUT Torch tensor back to numpy array
-    img = img.cpu().numpy().transpose(1, 2, 0)
-    img = img[:, :, ::-1]
-    img = cv2.UMat(img).get()
+def _visualise_single(img, gt_box=None, gt_label=None, pred_box=None, pred_label=None, colour=None):
+    img = img
 
-    if gt_box:
-        pass
+    if gt_box is not None:
+        for c, b in zip(gt_label, gt_box):
+
+            img = add_bbox(img,
+                           int(round(b[0])),
+                           int(round(b[1])),
+                           int(round(b[2])),
+                           int(round(b[3])),
+                         color='orange')
 
     if pred_box:
-        pass
-
-    if gt_label:
-        pass
-
-    if pred_label:
         pass
 
     return img
