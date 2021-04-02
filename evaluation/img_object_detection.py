@@ -27,6 +27,10 @@ from dataset.vidvrddataset import ObjectDetectVidVRDDataset
 import os, tqdm
 import numpy as np
 
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
+import json 
+
 # TODO: Derek and Winson Please get it Done
 # Description: Single Image Detection
 # Save as json/txt format
@@ -36,13 +40,73 @@ def evaluate_COCO(dataloader, model, device):
     model.to(device)
     model.eval()
 
+    # Create the ground truth annotation file for COCO API
+    annotations = {"annotations": []} # list of dictionaries
+    id = 1
+
+    print("Saving annotation json....")
+    for img, blob in dataloader:
+        img, blob = img[0].to(device), blob[0]
+        for i in range(len(blob['boxes'])):
+            temp_dict = {
+                "id": id,
+                "image_id": blob["image_id"].item(),
+                "category_id": blob["labels"][i].item(),
+                "area": blob["area"][i].item(),
+                "bbox": blob["boxes"][i].tolist(),
+                "iscrowd": blob["iscrowd"][i].item(),
+            }
+            annotations["annotations"].append(temp_dict)
+            id += 1
+
+    with open('annotations/test.json', 'w') as json_file:
+        annotation_json = json.dump(annotations, json_file, indent = 4)
+    print("Saved annotation json! path: annotations/test.json")
+    
+    # Create the inference annotation file for COCO API
+    annotations = {"annotations": []} # list of dictionaries
+    id = 1
+
     for img, blob in dataloader:
 
         img, blob = img[0].to(device), blob[0]
         with torch.no_grad():
-            inference = model(torch.unsqueeze(img, 0))
+            inference = model(torch.unsqueeze(img, 0))[0]
 
-        # Derek/Winson Please carry on from here......
+        for i in range(len(inference['boxes'])):
+            temp_dict = {
+                "id": id,
+                "image_id": blob["image_id"].item(),
+                "category_id": inference["labels"][i].item(),
+                "bbox": inference["boxes"][i].tolist(),
+                "scores": inference["scores"][i].item(),
+            }
+            annotations["annotations"].append(temp_dict)
+            id += 1
+
+    with open('annotations/inference.json', 'w') as json_file:
+        inference_json = json.dump(annotations, json_file, indent = 4)
+    print("Saved annotation json! path: annotations/inference.json")
+    
+    # TODO: (still buggy) modify the code to evaluate the inference.json with annotation_json
+    #initialize COCO ground truth api
+    annFile = 'annotations/test.json'
+    cocoGt=COCO(annFile)    
+
+    #initialize COCO detections api
+    resFile = 'annotations/inference.json'
+    cocoDt=cocoGt.loadRes(resFile)
+
+    imgIds=sorted(cocoGt.getImgIds())
+    imgIds=imgIds[0:100]
+    imgId = imgIds[np.random.randint(100)]
+
+    # running evaluation
+    cocoEval = COCOeval(cocoGt,cocoDt,annType)
+    cocoEval.params.imgIds  = imgIds
+    cocoEval.evaluate()
+    cocoEval.accumulate()
+    cocoEval.summarize()
 
 def _visualise_single(img, gt_box=None, gt_label=None, pred_box=None, pred_label=None, colour=None):
 
@@ -109,7 +173,7 @@ def main(parse_options):
                                               num_workers=2,
                                               collate_fn=util.collate_fn)
 
-    evaluate_COCO(dataloader_test, fasterrcnn_resnet50_fpn, device)
+    evaluate_COCO(dataloader_test, torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True), device)
     visualise(dataloader_test, fasterrcnn_resnet50_fpn, device)
 
 if __name__ =='__main__':
