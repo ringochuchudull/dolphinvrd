@@ -122,11 +122,12 @@ def train(arguement):
         testset_detection = torch.utils.data.Subset(testset_detection, indices[-50:])
 
         print(f'Debugging detection training: {len(trainset_detection)}, {len(testset_detection)}')
-
+    
+    print(f'Length of Train set and test set: {len(trainset_detection)}, {len(testset_detection)}')
     data_loader_train = torch.utils.data.DataLoader(trainset_detection,
-                                              batch_size=1,
+                                              batch_size=8,
                                               shuffle=False,
-                                              num_workers=2,
+                                              num_workers=8,
                                               collate_fn=util.collate_fn
                                               )
     data_loader_test = torch.utils.data.DataLoader(testset_detection,
@@ -171,7 +172,7 @@ def train(arguement):
         # evaluate on the test dataset
         if (epoch + 1) % 2 == 0:
             print(f'\tFinish Training Epoch: {epoch}, now evaluate')
-            #evaluate(model, data_loader_train, device=device)
+            evaluate(model, data_loader_train, device=device)
 
 
 def debug_func(arguement):
@@ -179,6 +180,14 @@ def debug_func(arguement):
                                                    set='train',
                                                    transforms=[T.RandomHorizontalFlip(0.5)])
 
+    data_loader_train = torch.utils.data.DataLoader(trainset_detection,
+                                              batch_size=1,
+                                              shuffle=False,
+                                              num_workers=2,
+                                              collate_fn=util.collate_fn
+                                              )
+    
+    evaluate(get_detection_model(36), data_loader_train, 'cuda')
     print(f' Length of the training loader {len(trainset_detection)}')
 
     get_fasterrcnn_resnet_101(36)
@@ -189,6 +198,6 @@ if __name__ == '__main__':
     parse = GeneralParser()
     parse_options = parse.parse()
     
-    debug_func(parse_options)
-    #train(parse_options)
+    #debug_func(parse_options)
+    train(parse_options)
 
