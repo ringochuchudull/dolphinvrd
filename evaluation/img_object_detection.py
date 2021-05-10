@@ -24,7 +24,8 @@ import model.helper.vision.utils as util
 
 from dataset.vidvrddataset import ObjectDetectVidVRDDataset
 
-import os, tqdm
+import os
+from tqdm import tqdm
 import numpy as np
 
 # TODO: Derek and Winson Please get it Done
@@ -63,10 +64,14 @@ def visualise(datasetloader, model, device='cpu'):
     model.to(device)
     model.eval()
 
-    for img, blob in datasetloader:
+    for index, (img, blob) in enumerate(tqdm(datasetloader)):
         img, blob = img[0].to(device), blob[0]
+
+
         with torch.no_grad():
             inference = model(torch.unsqueeze(img, 0))
+
+        print(inference)
 
         gt_boxes, gt_labels = blob['boxes'], blob['labels']
         gt_boxes, gt_labels = list(gt_boxes.cpu().detach().numpy()), list(gt_labels.cpu().detach().numpy())
@@ -109,8 +114,8 @@ def main(parse_options):
                                               num_workers=2,
                                               collate_fn=util.collate_fn)
 
-    evaluate_COCO(dataloader_test, fasterrcnn_resnet50_fpn, device)
-    visualise(dataloader_test, fasterrcnn_resnet50_fpn, device)
+    #evaluate_COCO(dataloader_test, fasterrcnn_resnet50_fpn, device)
+    visualise(dataloader_test, torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True), device)
 
 if __name__ =='__main__':
 
