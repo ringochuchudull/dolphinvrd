@@ -10,7 +10,7 @@ baseline/features/*
 baseline/models/*
 
 dataset/dolphin/
-!dataset/dolphin/readme.py
+!dataset/dolphin/readme.txt
 
 dataset/vg/*
 !dataset/vg/__init__.py
