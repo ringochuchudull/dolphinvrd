@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from helpers.parser import DolphinParser
-from helpers.utility import PrintColour, ObjColour
+from model.helper.parser import DolphinParser
 
 import os
 import glob
@@ -137,6 +136,7 @@ class DOLPHIN(torch.utils.data.Dataset):
 
     def __str__(self):
         return 'This is DOLPHIN DETECTION LOADER'
+
 
 if __name__ == '__main__':
     pass

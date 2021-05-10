@@ -7,41 +7,36 @@ from torchvision.models.detection import FasterRCNN
 from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
 from torchvision.models.detection.transform import resize_boxes
 
-
-def resize_boxes_v2(boxes, original_size, new_size):
-    # type: (Tensor, List[int], List[int]) -> Tensor
-    ratios = [
-        torch.tensor(s, dtype=torch.float32, device=boxes.device) /
-        torch.tensor(s_orig, dtype=torch.float32, device=boxes.device)
-        for s, s_orig in zip(new_size, original_size)
-    ]
-    ratio_height, ratio_width = ratios
-    xmin, ymin, xmax, ymax = boxes.unbind(1)
-
-    xmin = xmin * ratio_width
-    xmax = xmax * ratio_width
-    ymin = ymin * ratio_height
-    ymax = ymax * ratio_height
-    return torch.stack((xmin, ymin, xmax, ymax), dim=1)
-
+# For all model definition:
+# See: https://github.com/pytorch/vision/tree/master/torchvision/models/detection
+# and also:  https://pytorch.org/docs/stable/torchvision/models.html
 
 class FRCNN_FPN(FasterRCNN):
 
-    def __init__(self, num_classes):
-        backbone = resnet_fpn_backbone('resnet50', False)
+    def __init__(self, num_classes=91):
+        backbone = resnet_fpn_backbone(backbone_name='resnet18', pretrained=True) # Another Option could be 'resnet18'/'34'/'50','101'
         super(FRCNN_FPN, self).__init__(backbone, num_classes)
+
         # these values are cached to allow for feature reuse
         self.original_image_sizes = None
         self.preprocessed_images = None
         self.features = None
 
-    def detect(self, img):
+    def detect(self, image):
         device = list(self.parameters())[0].device
-        img = img.to(device)
-        detections = self(img)[0]
+        image = image.to(device)
+        detections = self(image)[0]
         return detections['boxes'].detach(), detections['scores'].detach()
 
-    # need edit
+    def get_features(self):
+        f = self.features
+        pass
+
+    def get_RoI_Pool(self):
+
+        fuck = self.roi_heads
+        print(fuck)
+
     def predict_boxes(self, boxes):
         device = list(self.parameters())[0].device
         boxes = boxes.to(device)
@@ -56,22 +51,11 @@ class FRCNN_FPN(FasterRCNN):
         pred_boxes = self.roi_heads.box_coder.decode(box_regression, proposals)
         pred_scores = F.softmax(class_logits, -1)
 
-        pred_class = torch.argmax(pred_scores, dim=1)
-
-        '''
-        pred_boxes = pred_boxes[:, -1:].squeeze(dim=1).detach()
+        pred_boxes = pred_boxes[:, 1:].squeeze(dim=1).detach()
         pred_boxes = resize_boxes(pred_boxes, self.preprocessed_images.image_sizes[0], self.original_image_sizes[0])
-        pred_scores = pred_scores[:, -1:].squeeze(dim=1).detach()
-        '''
-
-        print(pred_boxes[:, -1:].shape)
-        print(pred_boxes[:, 1:1 + 1].shape)
-
-        pred_boxes = pred_boxes[:, 1:2].squeeze(dim=1).detach()
-        pred_boxes = resize_boxes(pred_boxes, self.preprocessed_images.image_sizes[0], self.original_image_sizes[0])
-        pred_scores = pred_scores[:, 1:2].squeeze(dim=1).detach()
-
+        pred_scores = pred_scores[:, 1:].squeeze(dim=1).detach()
         return pred_boxes, pred_scores
+
 
     def load_image(self, images):
         device = list(self.parameters())[0].device
@@ -85,10 +69,3 @@ class FRCNN_FPN(FasterRCNN):
         self.features = self.backbone(preprocessed_images.tensors)
         if isinstance(self.features, torch.Tensor):
             self.features = OrderedDict([(0, self.features)])
-
-
-if __name__ == '__main__':
-    test_Tracktor = FRCNN_FPN(num_classes=3)
-    test_Tracktor.load()
-
-

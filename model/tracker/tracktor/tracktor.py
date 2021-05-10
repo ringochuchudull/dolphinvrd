@@ -8,19 +8,17 @@ from scipy.optimize import linear_sum_assignment
 import cv2
 
 from .utils import bbox_overlaps, warp_pos, get_center, get_height, get_width, make_pos
-
 from torchvision.ops.boxes import clip_boxes_to_image, nms
 
-from helpers.utility import get_random_colour
-
-
 import os
+
+from model.helper.utility import generate_random_colour
 
 class Tracker:
 
     """The main tracking file, here is where magic happens."""
     # only track pedestrian
-    cl = 3
+    cl = 2
 
     def __init__(self, obj_detect, reid_network, tracker_cfg):
         self.obj_detect = obj_detect
@@ -465,7 +463,7 @@ class Track(object):
         self.last_v = torch.Tensor([])
         self.gt_id = None
         
-        self.colour = get_random_colour()
+        self.colour = generate_random_colour()
 
     def has_positive_area(self):
         return self.pos[0, 2] > self.pos[0, 0] and self.pos[0, 3] > self.pos[0, 1]

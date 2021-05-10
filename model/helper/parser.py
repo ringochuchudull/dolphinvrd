@@ -33,7 +33,7 @@ class DolphinParser:
                                     help="Play Visualisation?",
                                     default=False)
 
-        # Deep Learning Options
+        # Deep Learning Options ---------------------------------------
         self.parser.add_argument("--device",
                                 type=str,
                                 help="Your model device",
