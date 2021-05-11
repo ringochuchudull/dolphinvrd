@@ -227,12 +227,16 @@ if __name__ == '__main__':
             # evaluate on the test dataset
 
             if epoch % 3 == 0:
-                evaluate(model, data_loader_test, device=device)
+                #evaluate(model, data_loader_test, device=device)
                 every_parameter = {'epoch': epoch,
                                    'model_state_dict': model.state_dict(),
                                    'optimizer_state_dict': optimizer.state_dict()
                                    }
                 torch.save(every_parameter, os.path.join(git_root(), f"general_detector_{epoch}.pth"))
+            if epoch %6 == 0:
+                evaluate(model, data_loader_test, device=device)
+
+    
     except:
         torch.save(every_parameter, os.path.join(git_root(), f"general_detector_{epoch}.pth"))
         evaluate(model, data_loader_test, device=device)

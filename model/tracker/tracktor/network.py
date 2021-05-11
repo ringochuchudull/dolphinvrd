@@ -58,16 +58,39 @@ class FRCNN_FPN(FasterRCNN):
 
         pred_class = torch.argmax(pred_scores, dim=1)
 
-        '''
+        # This is the part that need modification
+
+        ''' Original Code
         pred_boxes = pred_boxes[:, -1:].squeeze(dim=1).detach()
         pred_boxes = resize_boxes(pred_boxes, self.preprocessed_images.image_sizes[0], self.original_image_sizes[0])
         pred_scores = pred_scores[:, -1:].squeeze(dim=1).detach()
+        '''        
         '''
-
         print(pred_boxes[:, -1:].shape)
         print(pred_boxes[:, 1:1 + 1].shape)
+        '''
 
-        pred_boxes = pred_boxes[:, 1:2].squeeze(dim=1).detach()
+        ''' Running Code for Dolphin
+        print(pred_boxes.shape);
+        print(pred_boxes[:, 1:2, :].shape);
+        print(pred_boxes[:, 1:2].squeeze(dim=1).shape)        
+        print(torch.equal(pred_boxes[:, 1:2, :].squeeze(dim=1), pred_boxes[:, 1, :]))
+        print(pred_class)
+        '''
+
+        final_pred_box = torch.zeros(len(pred_boxes), 4)
+        for i,(pb, cls) in enumerate(zip(pred_boxes, pred_class)):    
+            final_pred_box[i, :] = pb[cls]
+
+        '''
+        print(pred_boxes)
+        print(final_pred_box)
+        print(final_pred_box.shape)
+        input('check2')
+        '''
+
+        #pred_boxes = pred_boxes[:, 1:2].squeeze(dim=1).detach()
+        pred_boxes = final_pred_box
         pred_boxes = resize_boxes(pred_boxes, self.preprocessed_images.image_sizes[0], self.original_image_sizes[0])
         pred_scores = pred_scores[:, 1:2].squeeze(dim=1).detach()
 

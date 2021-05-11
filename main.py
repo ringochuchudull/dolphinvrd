@@ -63,8 +63,9 @@ def main():
 
     try:
         obj_detect = FRCNN_FPN(num_classes=3)
-        model_weight = None
+        model_weight = os.path.join(git_root(), 'general_detector_0.pth') #'model', 'param', 'general_detector_0.pth')
         # .pth file needed
+
         checkpoint = torch.load(model_weight, map_location=DEVICE)
         obj_detect.load_state_dict(checkpoint['model_state_dict'])
 
@@ -84,9 +85,11 @@ def main():
             data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
             num_frames = 0
             print(f'Length of Sequence: {len(data_loader)}')
-            for i, (frame, info) in enumerate(tqdm(data_loader)):
+            for i, (frame, blob) in enumerate(tqdm(data_loader)):
+                
+                blob['img'] = frame
                 with torch.no_grad():
-                    tracker.step(info, idx=i + 1)
+                    tracker.step(blob, idx=i+1)
 
                 num_frames += 1
                 results = tracker.get_results()
