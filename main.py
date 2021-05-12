@@ -19,8 +19,34 @@ def eval():
     pass
 
 def train(dataset, tracker):
-    pass
+    # Run Detection
 
+    train_vrd, test_vrd = dataset
+    #data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
+    
+    train_vrd_dataloader = torch.utils.data.DataLoader(train_vrd, batch_size=1, shuffle=False)
+    test_vrd_dataloader = torch.utils.data.DataLoader(test_vrd, batch_size=1, shuffle=False)
+
+    print(len(train_vrd))
+    print(f'Length of VRD Training Sequence: {len(train_vrd_dataloader)}')
+    print(f'Length of VRD Testomg Sequence: {len(train_vrd_dataloader)}')
+
+    window_size = train_vrd.__get_window_size__()
+    for i, clip in enumerate(train_vrd_dataloader):
+        print(f'Start Index {i} - {i+window_size}')
+
+        if i > 10:
+            break
+        
+        # Perform Tracking
+        tracker.reset()        
+        for ws, blob in enumerate(tqdm(clip)):    
+            with torch.no_grad():
+                tracker.step(blob, idx=ws+1)
+        traj = tracker.get_results()
+
+        # Module 2 - Pair Prosoal from Graphs
+        
 
 
 def main():
@@ -111,32 +137,9 @@ def main():
 
 
 
-    # Run Detection
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
-    
-    train_vrd_dataloader = torch.utils.data.DataLoader(train_vrd, batch_size=1, shuffle=False)
-    test_vrd_dataloader = torch.utils.data.DataLoader(test_vrd, batch_size=1, shuffle=False)
 
-    print(len(train_vrd))
-    print(f'Length of VRD Training Sequence: {len(train_vrd_dataloader)}')
-    print(f'Length of VRD Testomg Sequence: {len(train_vrd_dataloader)}')
+    train((train_vrd, test_vrd), tracker)
 
-    window_size = train_vrd.__get_window_size__()
-    for i, clip in enumerate(train_vrd_dataloader):
-        print(f'Start Index {i} - {i+window_size}')
-
-        if i > 10:
-            break
-        
-        # Perform Tracking
-        tracker.reset()        
-        for ws, blob in enumerate(tqdm(clip)):    
-            with torch.no_grad():
-                tracker.step(blob, idx=ws+1)
-        traj = tracker.get_results()
-
-
-        # Module 2 - Video Visual Relation Detection
 
 
 if __name__ == '__main__':
