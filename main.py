@@ -56,7 +56,7 @@ def main():
     with open(os.path.join(git_root(), 'model', 'tracker', 'tracktor', 'configuration.yaml'), 'r') as stream:
         try:
             configyaml = yaml.safe_load(stream)['tracktor']['tracker']
-            tracker = Tracker(obj_detect, None, configyaml)
+            tracker = Tracker(obj_detect, None, configyaml, DEVICE)
         except yaml.YAMLError as exc:
             print(exc)
 
@@ -132,7 +132,7 @@ def main():
         tracker.reset()        
         for ws, blob in enumerate(tqdm(clip)):    
             with torch.no_grad():
-                tracker.step(blob, idx=ws+1, device=DEVICE)
+                tracker.step(blob, idx=ws+1)
         traj = tracker.get_results()
 
 
