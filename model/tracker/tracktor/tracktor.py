@@ -109,7 +109,7 @@ class Tracker:
                 # t.prev_pos = t.pos
                 t.pos = pos[i].view(1, -1)
 
-        return torch.Tensor(s[::-1]).cuda()
+        return torch.Tensor(s[::-1]).to(device)
 
     def get_pos(self):
         """Get the positions of all active tracks."""
@@ -118,7 +118,7 @@ class Tracker:
         elif len(self.tracks) > 1:
             pos = torch.cat([t.pos for t in self.tracks], 0)
         else:
-            pos = torch.zeros(0).cuda()
+            pos = torch.zeros(0).to(device)
         return pos
 
     def get_features(self):
@@ -128,7 +128,7 @@ class Tracker:
         elif len(self.tracks) > 1:
             features = torch.cat([t.features for t in self.tracks], 0)
         else:
-            features = torch.zeros(0).cuda()
+            features = torch.zeros(0).to(device)
         return features
 
     def get_inactive_features(self):
@@ -138,12 +138,12 @@ class Tracker:
         elif len(self.inactive_tracks) > 1:
             features = torch.cat([t.features for t in self.inactive_tracks], 0)
         else:
-            features = torch.zeros(0).cuda()
+            features = torch.zeros(0).to(device)
         return features
 
     def reid(self, blob, new_det_pos, new_det_scores):
         """Tries to ReID inactive tracks with provided detections."""
-        new_det_features = [torch.zeros(0).cuda() for _ in range(len(new_det_pos))]
+        new_det_features = [torch.zeros(0).to(device) for _ in range(len(new_det_pos))]
 
         if self.do_reid:
             new_det_features = self.reid_network.test_rois(
@@ -189,15 +189,15 @@ class Tracker:
                 for t in remove_inactive:
                     self.inactive_tracks.remove(t)
 
-                keep = torch.Tensor([i for i in range(new_det_pos.size(0)) if i not in assigned]).long().cuda()
+                keep = torch.Tensor([i for i in range(new_det_pos.size(0)) if i not in assigned]).long().to(device)
                 if keep.nelement() > 0:
                     new_det_pos = new_det_pos[keep]
                     new_det_scores = new_det_scores[keep]
                     new_det_features = new_det_features[keep]
                 else:
-                    new_det_pos = torch.zeros(0).cuda()
-                    new_det_scores = torch.zeros(0).cuda()
-                    new_det_features = torch.zeros(0).cuda()
+                    new_det_pos = torch.zeros(0).to(device)
+                    new_det_scores = torch.zeros(0).to(device)
+                    new_det_features = torch.zeros(0).to(device)
 
         return new_det_pos, new_det_scores, new_det_features
 
@@ -263,7 +263,7 @@ class Tracker:
                 if t.last_v.nelement() > 0:
                     self.motion_step(t)
 
-    def step(self, blob, idx):
+    def step(self, blob, idx, device):
         """This function should be called every timestep to perform tracking with a blob
         containing the image information.
         """
@@ -283,7 +283,7 @@ class Tracker:
             if dets.nelement() > 0:
                 boxes, scores = self.obj_detect.predict_boxes(dets)
             else:
-                boxes = scores = torch.zeros(0).cuda()
+                boxes = scores = torch.zeros(0).to(device)
         else:
             boxes, scores = self.obj_detect.detect(blob['img'])
         
@@ -297,15 +297,15 @@ class Tracker:
             # Filter out tracks that have too low person score
             inds = torch.gt(scores, self.detection_person_thresh).nonzero().view(-1)
         else:
-            inds = torch.zeros(0).cuda()
+            inds = torch.zeros(0).to(device)
 
         if inds.nelement() > 0:
             det_pos = boxes[inds]
 
             det_scores = scores[inds]
         else:
-            det_pos = torch.zeros(0).cuda()
-            det_scores = torch.zeros(0).cuda()
+            det_pos = torch.zeros(0).to(device)
+            det_scores = torch.zeros(0).to(device)
         
 
         ##################
@@ -313,7 +313,7 @@ class Tracker:
         ##################
 
         num_tracks = 0
-        nms_inp_reg = torch.zeros(0).cuda()
+        nms_inp_reg = torch.zeros(0).to(device)
         if len(self.tracks):
             # align
             if self.do_align:

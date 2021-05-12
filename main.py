@@ -132,7 +132,7 @@ def main():
         tracker.reset()        
         for ws, blob in enumerate(tqdm(clip)):    
             with torch.no_grad():
-                tracker.step(blob, idx=ws+1)
+                tracker.step(blob, idx=ws+1, DEVICE)
         traj = tracker.get_results()
 
 
