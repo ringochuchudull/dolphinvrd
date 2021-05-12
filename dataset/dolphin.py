@@ -12,7 +12,7 @@ from PIL import Image
 
 class DOLPHIN(torch.utils.data.Dataset):
 
-    def __init__(self, data_path, set, mode='general', vis_threshold=0.2, transforms=None):
+    def __init__(self, data_path, set, mode='general', vis_threshold=0.2, segment_size=30, transforms=None):
 
         # load all image files, sorting them to
         # ensure that they are aligned
@@ -56,6 +56,8 @@ class DOLPHIN(torch.utils.data.Dataset):
 
         self._vis_threshold = vis_threshold
         self.transforms = transforms
+
+        self.window_size = segment_size 
 
     @property
     def num_classes(self):
@@ -129,6 +131,7 @@ class DOLPHIN(torch.utils.data.Dataset):
         if self.transforms is not None:
             img, target = self.transforms(img, target)
 
+        target["img"] = img
         return img, target
 
     def __len__(self):
@@ -138,5 +141,143 @@ class DOLPHIN(torch.utils.data.Dataset):
         return 'This is DOLPHIN DETECTION LOADER'
 
 
+
+
+class DOLPHINVIDEOVRD(DOLPHIN):
+
+    def __get_one_image(self, idx):
+        img_path = self._img_paths[idx]
+        img = Image.open(img_path).convert("RGB")
+
+        bbinfos = self._bbs_info[idx]
+        num_objs = len(bbinfos)
+
+        boxes = []
+        labels = []
+
+        for i in range(num_objs):
+
+            this_config = bbinfos[i]
+            # Sort out the bounding boxes first
+            tl, tr = this_config['Bounding Box left'], this_config['Bounding Box top']
+            height, width = this_config['Bounding box height'], this_config['Bounding box width']
+            xmin, ymin, xmax, ymax = tl, tr - height, tl + width, tr
+            boxes.append([xmin, ymin, xmax, ymax])
+
+            # Sort out the label after
+            this_id = this_config['Identity']
+
+            if len(self._classes) == 3:  # General Mode
+                if this_id in ['Angelo', 'Toto', 'Anson', 'Ginsan']:
+                    labels.append(1)
+                elif this_id in ['Pipe']:
+                    labels.append(2)
+                else:
+                    pass
+
+            elif len(self._classes) == 6:  # Specific Mode
+
+                if this_id is 'Angelo':
+                    labels.append(1)
+                elif this_id is 'Toto':
+                    labels.append(2)
+                elif this_id is 'Anson':
+                    labels.append(3)
+                elif this_id is 'Ginsan':
+                    labels.append(4)
+                elif this_id is 'Pipe':
+                    labels.append(5)
+                else:
+                    pass
+            else:
+                raise Exception  # Error
+
+        assert len(boxes) == len(labels)
+        boxes = torch.as_tensor(boxes, dtype=torch.float32)
+        labels = torch.as_tensor(labels, dtype=torch.int64)
+
+        image_id = torch.tensor([idx])
+        area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
+
+        # suppose all instances are not crowd
+        iscrowd = torch.zeros((num_objs,), dtype=torch.int64)
+
+        target = {}
+        target["boxes"] = boxes
+        target["labels"] = labels
+        target["image_id"] = image_id
+        target["area"] = area
+        target["iscrowd"] = iscrowd
+
+        if self.transforms is not None:
+            img, target = self.transforms(img, target)
+
+        target["img"] = img
+        return img, target
+
+
+    def __getitem__(self, idx):
+        
+        clip = []
+        #boxes = []
+        #labels = []
+        #image_id = []
+        #area = []
+        #iscrowd = []
+
+        for i in range(idx, idx+self.window_size):
+            _, t = self.__get_one_image(i)
+            clip.append(t)    
+
+            '''
+            clip.append(t['img'])
+            boxes.append(t['boxes'])
+            labels.append(t['labels'])
+            image_id.append(t['image_id'])
+            area.append(t['area'])
+            iscrowd.append(t['iscrowd'])
+            '''
+        #boxes = torch.tensor(boxes)
+        #labels = torch.tensor(labels)
+        #image_id = torch.tensor(image_id)
+        #area = torch.tensor(area)
+        #iscrowd = torch.tensor(iscrowd)
+        '''
+        target = {}
+        target['clip'] = clip
+        target['boxes'] = boxes
+        target['labels'] = labels
+        '''
+        return clip
+
+    def __len__(self):
+        return len(self._img_paths) - self.window_size
+
+    def __str__(self):
+        return 'This is DOLPHIN VRD Video Loader'
+
+    def __get_window_size__(self):
+        return self.window_size
+
+import model.helper.vision.transforms as T
+
+def get_transform(train):
+    transforms = []
+    # converts the image, a PIL image, into a PyTorch Tensor
+    transforms.append(T.ToTensor())
+    if train:
+        # https://pytorch.org/docs/stable/torchvision/transforms.html
+        transforms.append(T.RandomHorizontalFlip(0.5))
+
+    return T.Compose(transforms)
+
+
 if __name__ == '__main__':
-    pass
+    check = DOLPHINVIDEOVRD('../DOLPHIN/', set='Train', transforms=get_transform(False))
+    data_loader = torch.utils.data.DataLoader(check, batch_size=1, shuffle=False)
+
+    #check2 = DOLPHIN('../DOLPHIN/', set='Train', transforms=get_transform(True))
+    #data_loader = torch.utils.data.DataLoader(check2, batch_size=1, shuffle=False)
+    
+    for i in data_loader:
+        print(i)

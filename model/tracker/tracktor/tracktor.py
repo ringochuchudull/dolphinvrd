@@ -18,7 +18,7 @@ class Tracker:
 
     """The main tracking file, here is where magic happens."""
     # only track pedestrian
-    cl = 2
+    cl = 3
 
     def __init__(self, obj_detect, reid_network, tracker_cfg):
         self.obj_detect = obj_detect
@@ -331,6 +331,8 @@ class Tracker:
                 # create nms input
 
                 # nms here if tracks overlap
+                # https://github.com/pytorch/vision/issues/3058
+
                 keep = nms(self.get_pos(), person_scores, self.regression_nms_thresh)
 
                 self.tracks_to_inactive([self.tracks[i] for i in list(range(len(self.tracks))) if i not in keep])

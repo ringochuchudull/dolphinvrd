@@ -89,6 +89,8 @@ class FRCNN_FPN(FasterRCNN):
         input('check2')
         '''
 
+        final_pred_box = final_pred_box.to(pred_boxes.device)
+
         #pred_boxes = pred_boxes[:, 1:2].squeeze(dim=1).detach()
         pred_boxes = final_pred_box
         pred_boxes = resize_boxes(pred_boxes, self.preprocessed_images.image_sizes[0], self.original_image_sizes[0])
@@ -108,6 +110,8 @@ class FRCNN_FPN(FasterRCNN):
         self.features = self.backbone(preprocessed_images.tensors)
         if isinstance(self.features, torch.Tensor):
             self.features = OrderedDict([(0, self.features)])
+
+
 
 
 if __name__ == '__main__':

@@ -4,16 +4,13 @@ import torch, torchvision
 from model.helper.parser import DolphinParser
 from model.helper.dolphin_detector_train import get_transform
 from model.helper.utility import git_root, cpu_or_gpu
-from dataset.dolphin import DOLPHIN
+from dataset.dolphin import DOLPHIN, DOLPHINVIDEOVRD
 
 import os, yaml
 from tqdm import tqdm
 
 from model.tracker.tracktor.network import FRCNN_FPN
 from model.tracker.tracktor.tracktor import Tracker
-
-def train():
-    pass
 
 def inference():
     pass
@@ -22,10 +19,45 @@ def eval():
     pass
 
 
-def main():
+def train():
     dp = DolphinParser()
     dp_args = dp.parse()
 
+    DEVICE = cpu_or_gpu(dp_args.device)
+
+    torch.manual_seed(1234)
+    torch.cuda.manual_seed(1234)
+    np.random.seed(1234)
+    torch.backends.cudnn.deterministic = True
+
+    print("+Initializing object detector+")
+
+    try:
+        obj_detect = FRCNN_FPN(num_classes=3)
+        model_weight = os.path.join(git_root(), 'model', 'param', 'general_detector_30.pth') #'model', 'param', 'general_detector_0.pth')
+        # .pth file needed
+
+        checkpoint = torch.load(model_weight, map_location=DEVICE)
+        obj_detect.load_state_dict(checkpoint['model_state_dict'])
+
+    except (FileNotFoundError, Exception):
+        print('Failed Loading Default Object Detector, Use torchvision instead')
+        obj_detect = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+
+    obj_detect.to(DEVICE)
+    obj_detect.eval()
+
+    print("+Initializing Tracker")
+    tracker = None
+    with open(os.path.join(git_root(), 'model', 'tracker', 'tracktor', 'configuration.yaml'), 'r') as stream:
+        try:
+            configyaml = yaml.safe_load(stream)['tracktor']['tracker']
+            tracker = Tracker(obj_detect, None, configyaml)
+        except yaml.YAMLError as exc:
+            print(exc)
+
+
+    print('+Create Data Loader')
     try:
         dataset = DOLPHIN(data_path=dp_args.data_path,
                           set='Train',
@@ -36,6 +68,17 @@ def main():
                                set='Test',
                                mode='general',
                                transforms=get_transform(train=False))
+
+        train_vrd = DOLPHINVIDEOVRD(data_path=dp_args.data_path,
+                                    set='Train',
+                                    mode='general',
+                                    transforms=get_transform(train=False))
+
+        test_vrd = DOLPHINVIDEOVRD(data_path=dp_args.data_path,
+                                    set='Train',
+                                    mode='general',
+                                    transforms=get_transform(train=False))
+
 
     except AssertionError as e:
         print('You do not have dataset in the folder')
@@ -52,50 +95,47 @@ def main():
                                mode='general',
                                transforms=get_transform(train=False))
 
-    DEVICE = cpu_or_gpu(dp_args.device)
+        train_vrd = DOLPHINVIDEOVRD(data_path=dp_args.data_path,
+                                    set='Train',
+                                    mode='general',
+                                    transforms=get_transform(train=False))
 
-    torch.manual_seed(1234)
-    torch.cuda.manual_seed(1234)
-    np.random.seed(1234)
-    torch.backends.cudnn.deterministic = True
+        test_vrd = DOLPHINVIDEOVRD(data_path=dp_args.data_path,
+                                    set='Train',
+                                    mode='general',
+                                    transforms=get_transform(train=False))
 
-    print("+Initializing object detector+")
 
-    try:
-        obj_detect = FRCNN_FPN(num_classes=3)
-        model_weight = os.path.join(git_root(), 'general_detector_0.pth') #'model', 'param', 'general_detector_0.pth')
-        # .pth file needed
 
-        checkpoint = torch.load(model_weight, map_location=DEVICE)
-        obj_detect.load_state_dict(checkpoint['model_state_dict'])
+    # Run Detection
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
+    
+    train_vrd_dataloader = torch.utils.data.DataLoader(train_vrd, batch_size=1, shuffle=False)
+    test_vrd_dataloader = torch.utils.data.DataLoader(test_vrd, batch_size=1, shuffle=False)
 
-    except (FileNotFoundError, Exception):
-        obj_detect = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    print(len(train_vrd))
+    print(f'Length of VRD Training Sequence: {len(train_vrd_dataloader)}')
+    print(f'Length of VRD Testomg Sequence: {len(train_vrd_dataloader)}')
 
-    obj_detect.to(DEVICE)
-    obj_detect.eval()
+    window_size = train_vrd.__get_window_size__()
+    for i, clip in enumerate(train_vrd_dataloader):
+        print(f'Start Index {i} - {i+window_size}')
 
-    print("+Initializing Tracker")
-    tracker = None
-    with open(os.path.join(git_root(), 'model', 'tracker', 'tracktor', 'configuration.yaml'), 'r') as stream:
-        try:
-            configyaml = yaml.safe_load(stream)['tracktor']['tracker']
-            tracker = Tracker(obj_detect, None, configyaml)
+        if i > 10:
+            break
+        
+        # Perform Tracking
+        tracker.reset()        
+        for ws, blob in enumerate(tqdm(clip)):    
+            with torch.no_grad():
+                tracker.step(blob, idx=ws+1)
+        traj = tracker.get_results()
 
-            data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
-            num_frames = 0
-            print(f'Length of Sequence: {len(data_loader)}')
-            for i, (frame, blob) in enumerate(tqdm(data_loader)):
-                
-                blob['img'] = frame
-                with torch.no_grad():
-                    tracker.step(blob, idx=i+1)
+        print(traj)
 
-                num_frames += 1
-                results = tracker.get_results()
+def main():
+    train()
 
-        except yaml.YAMLError as exc:
-            print(exc)
 
 if __name__ == '__main__':
     main()
