@@ -18,8 +18,12 @@ def inference():
 def eval():
     pass
 
+def train(dataset, tracker):
+    pass
 
-def train():
+
+
+def main():
     dp = DolphinParser()
     dp_args = dp.parse()
 
@@ -131,10 +135,8 @@ def train():
                 tracker.step(blob, idx=ws+1)
         traj = tracker.get_results()
 
-        print(traj)
 
-def main():
-    train()
+        # Module 2 - Video Visual Relation Detection
 
 
 if __name__ == '__main__':

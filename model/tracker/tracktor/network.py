@@ -70,7 +70,7 @@ class FRCNN_FPN(FasterRCNN):
         print(pred_boxes[:, 1:1 + 1].shape)
         '''
 
-        ''' Running Code for Dolphin
+        ''' #Running Code for Dolphin
         print(pred_boxes.shape);
         print(pred_boxes[:, 1:2, :].shape);
         print(pred_boxes[:, 1:2].squeeze(dim=1).shape)        
@@ -78,21 +78,15 @@ class FRCNN_FPN(FasterRCNN):
         print(pred_class)
         '''
 
+        ''' Should be working
         final_pred_box = torch.zeros(len(pred_boxes), 4)
         for i,(pb, cls) in enumerate(zip(pred_boxes, pred_class)):    
             final_pred_box[i, :] = pb[cls]
-
-        '''
-        print(pred_boxes)
-        print(final_pred_box)
-        print(final_pred_box.shape)
-        input('check2')
-        '''
-
         final_pred_box = final_pred_box.to(pred_boxes.device)
-
-        #pred_boxes = pred_boxes[:, 1:2].squeeze(dim=1).detach()
         pred_boxes = final_pred_box
+        '''
+
+        pred_boxes = pred_boxes[:, 1:2].squeeze(dim=1).detach()
         pred_boxes = resize_boxes(pred_boxes, self.preprocessed_images.image_sizes[0], self.original_image_sizes[0])
         pred_scores = pred_scores[:, 1:2].squeeze(dim=1).detach()
 
