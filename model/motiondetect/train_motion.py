@@ -11,6 +11,8 @@ import math
 from model.helper.utility import cpu_or_gpu
 from collections import defaultdict
 
+from model.helper.parser import DolphinParser
+
 class TransformerModel(nn.Module):
 
     def __init__(self, ntoken, ninp, nhead, nhid, nlayers, dropout=0.5):
@@ -80,8 +82,6 @@ class LSTM(nn.Module):
     
     def forward(self, input_seq):
         lstm_out, _ = self.lstm(input_seq)
-
-        print(lstm_out.view(len(input_seq), -1).shape)
         predictions = self.linear(lstm_out.view(len(input_seq), -1))
 
         return predictions
@@ -101,27 +101,40 @@ class LSTM(nn.Module):
 
 
 def main():
-    check = DOLPHINVIDEOVRD('../DOLPHIN/', set='Train', mode='specific', transforms=get_transform(False))
+
+    dp = DolphinParser()
+    dp_args = dp.parse()
+
+    check = DOLPHINVIDEOVRD(dp_args.data_path, set='Train', mode='specific', transforms=get_transform(False))
     data_loader = torch.utils.data.DataLoader(check, batch_size=1, shuffle=False)
 
-    DEVICE = cpu_or_gpu('cuda')
-    MODEL = LSTM()
+    DEVICE = cpu_or_gpu(dp_args.device)
+    MODEL = LSTM().to(DEVICE)
 
-
-
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(MODEL.parameters(), lr=0.001, momentum=0.9)
+    
     # Transformer for motion detection
     for clip, motion in data_loader:
         # Each clip has a segment size = 30
         
+        optimizer.zero_grad()
+
         # Batch Size 1
         for did, blob in motion.items():
-            
-            if did == 5:  # Skip motions of pip as they are unlabelled
+            if did == 5:  # Skip motions of pipe as they are unlabelled
                 continue
+            
+            gt_class = blob['motion'].to(DEVICE)
+            pred_class = MODEL(blob['traj'].to(DEVICE))
 
-            print(did, blob['traj'].shape, blob['motion'].shape)
+            loss = criterion(pred_class, torch.argmax(gt_class, dim=1))
+            loss.backward()
+            optimizer.step()
 
-            MODEL(blob['traj'])
+
+            #    
 
 if __name__ == '__main__':
+    print('Run motion detection training script')
     main()
