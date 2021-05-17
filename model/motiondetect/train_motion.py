@@ -13,6 +13,8 @@ from collections import defaultdict
 
 from model.helper.parser import DolphinParser
 
+from tqdm import tqdm
+
 class TransformerModel(nn.Module):
 
     def __init__(self, ntoken, ninp, nhead, nhid, nlayers, dropout=0.5):
@@ -106,7 +108,7 @@ def main():
     dp_args = dp.parse()
 
     check = DOLPHINVIDEOVRD(dp_args.data_path, set='Train', mode='specific', transforms=get_transform(False))
-    data_loader = torch.utils.data.DataLoader(check, batch_size=1, shuffle=False)
+    data_loader = torch.utils.data.DataLoader(check, batch_size=1, shuffle=True)
 
     DEVICE = cpu_or_gpu(dp_args.device)
     MODEL = LSTM().to(DEVICE)
@@ -114,26 +116,31 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(MODEL.parameters(), lr=0.001, momentum=0.9)
     
-    # Transformer for motion detection
-    for clip, motion in data_loader:
-        # Each clip has a segment size = 30
+
+    running_loss = 0.0
+    # Single Epoch
+    for _, motion in tqdm(data_loader):
+        # Each clip has a segment size = 30        
         
         optimizer.zero_grad()
 
-        # Batch Size 1
-        for did, blob in motion.items():
-            if did == 5:  # Skip motions of pipe as they are unlabelled
-                continue
-            
-            gt_class = blob['motion'].to(DEVICE)
-            pred_class = MODEL(blob['traj'].to(DEVICE))
+        try:
+            # Batch Size 1 at a time
+            for did, blob in motion.items():
+                
+                if did == 5:  # Skip motions of pipe as they are unlabelled
+                    continue
+                
+                gt_class = blob['motion'].to(DEVICE)
+                pred_class = MODEL(blob['traj'].to(DEVICE))
 
-            loss = criterion(pred_class, torch.argmax(gt_class, dim=1))
-            loss.backward()
-            optimizer.step()
+                loss = criterion(pred_class, torch.argmax(gt_class, dim=1))
+                loss.backward()
+                optimizer.step()
 
-
-            #    
+            running_loss += loss.item()
+        except Exception as e:
+            print(e)
 
 if __name__ == '__main__':
     print('Run motion detection training script')

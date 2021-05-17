@@ -136,8 +136,6 @@ def main():
                                     transforms=get_transform(train=False))
 
 
-
-
     train((train_vrd, test_vrd), tracker)
 
 

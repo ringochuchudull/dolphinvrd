@@ -175,15 +175,19 @@ class DOLPHINVIDEOVRD(DOLPHIN):
         return clip, track_id
     
     def batchify_single(self, clip):    
-        track_id = {i:{'traj':torch.zeros((self.window_size, 4)), 'motion':None} for i in range(1,6)}
-    
+        # torch.tensor([0, 0, 0, 0, 0, 0 ,0 ,0 ,0]
+        track_id = {i:{'traj':torch.zeros((self.window_size, 4)), 'motion':torch.tensor([0, 0, 0, 0, 0, 0 ,0 ,0 , 1])} for i in range(1,6)}
+
         assert len(clip) == self.window_size
         for i in range(len(clip)):        
             for j, (bb, dolpid, behav) in enumerate(zip(clip[i]['boxes'], clip[i]['labels'], clip[i]['behaviour'])):
                 track_id[dolpid.item()]['traj'][i, :] = bb
-            
-                if i == self.window_size-1:
-                    track_id[dolpid.item()]['motion'] = behav
+                #if i == self.window_size-1:
+                #    track_id[dolpid.item()]['motion'] = behav
+        
+        motions = clip[-1]
+        for beh, lab in zip(motions['behaviour'], motions['labels']):
+            track_id[lab.item()]['motion'] = beh
 
         return track_id
             
