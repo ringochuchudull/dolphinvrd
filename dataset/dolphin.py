@@ -102,21 +102,20 @@ class DOLPHIN(torch.utils.data.Dataset):
 
             elif len(self._classes) == 6:  # Specific Mode
 
-                if this_id is 'Angelo':
+                if this_id == 'Angelo':
                     labels.append(1)
-                elif this_id is 'Toto':
+                elif this_id == 'Toto':
                     labels.append(2)
-                elif this_id is 'Anson':
+                elif this_id == 'Anson':
                     labels.append(3)
-                elif this_id is 'Ginsan':
+                elif this_id == 'Ginsan':
                     labels.append(4)
-                elif this_id is 'Pipe':
+                elif this_id == 'Pipe':
                     labels.append(5)
                 else:
                     pass
             else:
                 raise Exception  # Error
-
 
             # Inv, Obs, Moving, Eat, Coop, Int
             _action = this_config['Class']['Behaviour']
@@ -127,6 +126,7 @@ class DOLPHIN(torch.utils.data.Dataset):
             else:
                 one_hot_behav[position[_action]] = 1
             behaviour.append(one_hot_behav)
+
 
         assert len(boxes) == len(labels)
         assert len(behaviour) == len(labels)
@@ -161,6 +161,7 @@ class DOLPHIN(torch.utils.data.Dataset):
     def __str__(self):
         return 'This is DOLPHIN DETECTION LOADER'
 
+from collections import defaultdict
 
 class DOLPHINVIDEOVRD(DOLPHIN):
 
@@ -170,8 +171,22 @@ class DOLPHINVIDEOVRD(DOLPHIN):
             _, t = self.src_one_idx(i)
             clip.append(t)    
 
-        return clip
+        track_id = self.batchify_single(clip)
+        return clip, track_id
+    
+    def batchify_single(self, clip):    
+        track_id = {i:{'traj':torch.zeros((self.window_size, 4)), 'motion':None} for i in range(1,6)}
+    
+        assert len(clip) == self.window_size
+        for i in range(len(clip)):        
+            for j, (bb, dolpid, behav) in enumerate(zip(clip[i]['boxes'], clip[i]['labels'], clip[i]['behaviour'])):
+                track_id[dolpid.item()]['traj'][i, :] = bb
+            
+                if i == self.window_size-1:
+                    track_id[dolpid.item()]['motion'] = behav
 
+        return track_id
+            
     def __len__(self):
         return len(self._img_paths) - self.window_size
 
@@ -194,16 +209,8 @@ def get_transform(train):
     return T.Compose(transforms)
 
 
+
 if __name__ == '__main__':
     check = DOLPHINVIDEOVRD('../DOLPHIN/', set='Train', transforms=get_transform(False))
     data_loader = torch.utils.data.DataLoader(check, batch_size=1, shuffle=False)
 
-    #check2 = DOLPHIN('../DOLPHIN/', set='Test', transforms=get_transform(False))
-    #data_loader = torch.utils.data.DataLoader(check2, batch_size=1, shuffle=False)
-
-    print(len(check))
-    for i in range(len(check)):
-        clip = check[i]
-        for j in range(len(clip)):
-            a = clip[j]
-            print(i, a['behaviour'].shape, a['labels'].shape)
