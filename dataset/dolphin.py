@@ -13,7 +13,7 @@ from PIL import Image
 
 class DOLPHIN(torch.utils.data.Dataset):
 
-    def __init__(self, data_path, set, mode='general', vis_threshold=0.2, segment_size=30, transforms=None):
+    def __init__(self, data_path, set, mode='general', vis_threshold=0.2, segment_size=15, transforms=None):
 
         # load all image files, sorting them to
         # ensure that they are aligned
@@ -148,6 +148,8 @@ class DOLPHIN(torch.utils.data.Dataset):
         target["area"] = area
         target["iscrowd"] = iscrowd
         target["behaviour"] = behaviour
+
+        target['img_path'] = img_path
 
         if self.transforms is not None:
             img, target = self.transforms(img, target)

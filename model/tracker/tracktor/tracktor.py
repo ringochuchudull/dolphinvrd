@@ -60,7 +60,6 @@ class Tracker:
             self.results = {}
             self.im_index = 0
 
-            
     def tracks_to_inactive(self, tracks):
         self.tracks = [t for t in self.tracks if t not in tracks]
         for t in tracks:
@@ -264,6 +263,8 @@ class Tracker:
             for t in self.inactive_tracks:
                 if t.last_v.nelement() > 0:
                     self.motion_step(t)
+
+
 
     def step(self, blob, idx):
         """This function should be called every timestep to perform tracking with a blob

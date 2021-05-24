@@ -101,7 +101,6 @@ class LSTM(nn.Module):
 
 
 
-
 def main():
 
     dp = DolphinParser()

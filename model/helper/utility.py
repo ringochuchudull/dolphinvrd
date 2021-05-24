@@ -72,6 +72,29 @@ _FONT_PATH = _os.path.join(git_root(), 'doc', "ubuntu-b.ttf")
 _FONT_HEIGHT = 15
 _FONT = ImageFont.truetype(_FONT_PATH, _FONT_HEIGHT)
 
+def plot_traj(clip, traj, motion=None):
+    
+    clip_np = [_cv2.imread(c['img_path'][0]) for c in clip]
+
+    for id, cood in traj.items():
+    
+        for frame_idx, bbox in cood.items():
+            bbox = bbox[0:4]
+            x_min, y_min, x_max, y_max = [ int(b) for b in bbox]
+            
+            this_img = clip_np[frame_idx]
+            this_img = _cv2.rectangle(this_img, (x_min, y_min), (x_max, y_max), (255, 255, 0), 1)
+
+            font = _cv2.FONT_HERSHEY_SIMPLEX
+            centre_x = int(x_min/2 + x_max/2)
+            centre_y = int(y_min/2 + y_max/2)
+            this_img = _cv2.putText(this_img, f'ID: {id}', (centre_x, centre_y), font, 0.7, (255, 255, 0), 2, _cv2.LINE_AA)
+            this_img = _cv2.putText(this_img, f'Motion: Moving', (centre_x, centre_y+10), font, 0.7, (255, 255, 0), 2, _cv2.LINE_AA)
+            clip_np[frame_idx] = this_img
+
+    return clip_np
+
+
 
 def _rgb_to_bgr(color):
     return list(reversed(color))

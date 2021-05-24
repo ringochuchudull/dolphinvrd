@@ -3,7 +3,7 @@ import torch, torchvision
 
 from model.helper.parser import DolphinParser
 from model.helper.dolphin_detector_train import get_transform
-from model.helper.utility import git_root, cpu_or_gpu
+from model.helper.utility import git_root, cpu_or_gpu, plot_traj
 from dataset.dolphin import DOLPHIN, DOLPHINVIDEOVRD
 
 import os, yaml
@@ -12,6 +12,7 @@ from tqdm import tqdm
 from model.tracker.tracktor.network import FRCNN_FPN
 from model.tracker.tracktor.tracktor import Tracker
 
+import cv2 
 def inference():
     pass
 
@@ -32,10 +33,11 @@ def train(dataset, tracker):
     print(f'Length of VRD Testomg Sequence: {len(train_vrd_dataloader)}')
 
     window_size = train_vrd.__get_window_size__()
-    for i, clip in enumerate(train_vrd_dataloader):
+    for i, (clip, motion) in enumerate(train_vrd_dataloader):
         print(f'Start Index {i} - {i+window_size}')
 
-        if i > 10:
+        if i > 1:
+            print('Finished')
             break
         
         # Perform Tracking
@@ -46,7 +48,9 @@ def train(dataset, tracker):
         traj = tracker.get_results()
 
         # Module 2 - Pair Prosoal from Graphs
-        
+        visualise = plot_traj(clip, traj, motion)
+        for i, pic in enumerate(visualise):
+            cv2.imwrite(str(i).zfill(6)+'.jpg', pic)
 
 
 def main():
