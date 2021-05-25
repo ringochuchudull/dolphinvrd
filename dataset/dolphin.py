@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division, print_function
+
+import torchvision
 from model.helper.parser import DolphinParser
 
 import os
@@ -8,12 +10,13 @@ import json
 import torch
 import torch.utils.data
 
+import cv2
 
 from PIL import Image
 
 class DOLPHIN(torch.utils.data.Dataset):
 
-    def __init__(self, data_path, set, mode='general', vis_threshold=0.2, segment_size=15, transforms=None):
+    def __init__(self, data_path, set, mode='general', vis_threshold=0.2, segment_size=15, image_crop_scaling=1.25, transforms=None):
 
         # load all image files, sorting them to
         # ensure that they are aligned
@@ -59,6 +62,10 @@ class DOLPHIN(torch.utils.data.Dataset):
         self.transforms = transforms
 
         self.window_size = segment_size 
+        self.image_crop_scaling = image_crop_scaling
+
+        self.single_dolphin_image_resize = 600
+        self.resize = torchvision.transforms.Resize((self.single_dolphin_image_resize, self.single_dolphin_image_resize))
 
     @property
     def num_classes(self):
@@ -89,7 +96,6 @@ class DOLPHIN(torch.utils.data.Dataset):
             xmin, ymin, xmax, ymax = tl, tr - height, tl + width, tr
             boxes.append([xmin, ymin, xmax, ymax])
     
-            # 
             this_id = this_config['Identity']
 
             if len(self._classes) == 3:  # General Mode
@@ -163,8 +169,6 @@ class DOLPHIN(torch.utils.data.Dataset):
     def __str__(self):
         return 'This is DOLPHIN DETECTION LOADER'
 
-from collections import defaultdict
-
 class DOLPHINVIDEOVRD(DOLPHIN):
 
     def __getitem__(self, idx):        
@@ -178,18 +182,55 @@ class DOLPHINVIDEOVRD(DOLPHIN):
     
     def batchify_single(self, clip):    
         # torch.tensor([0, 0, 0, 0, 0, 0 ,0 ,0 ,0]
-        track_id = {i:{'traj':torch.zeros((self.window_size, 4)), 'motion':torch.tensor([0, 0, 0, 0, 0, 0 ,0 ,0 , 1])} for i in range(1,6)}
+        track_id = {i:{'traj':torch.zeros((self.window_size, 4)), 'motion':None, 'imgsnapshot':torch.zeros((self.window_size, 3, self.single_dolphin_image_resize, self.single_dolphin_image_resize))} for i in range(1,6)}
 
         assert len(clip) == self.window_size
         for i in range(len(clip)):        
             for j, (bb, dolpid, behav) in enumerate(zip(clip[i]['boxes'], clip[i]['labels'], clip[i]['behaviour'])):
                 track_id[dolpid.item()]['traj'][i, :] = bb
-                #if i == self.window_size-1:
-                #    track_id[dolpid.item()]['motion'] = behav
-        
+
         motions = clip[-1]
         for beh, lab in zip(motions['behaviour'], motions['labels']):
             track_id[lab.item()]['motion'] = beh
+
+        # Remove Key without label
+        for ke in list(track_id.keys()):
+            if track_id[ke]['motion'] is None:
+                del track_id[ke]
+
+        assert len(clip) == self.window_size
+
+        # Assign Image clips to trajories
+        for i in range(len(clip)):
+            img = clip[i]['img']
+            height, width = img.shape[1:]
+
+            for t_id in list(track_id.keys()):
+                bb_loc = track_id[t_id]['traj'][i]
+                x_min, y_min, x_max, y_max = [ torch.floor(b) for b in bb_loc]
+                x_min, y_min = x_min/self.image_crop_scaling, y_min/self.image_crop_scaling
+                x_max, y_max = x_max*self.image_crop_scaling, y_max*self.image_crop_scaling
+
+                x_min, x_max = torch.clamp(x_min, 0, width-1), torch.clamp(x_max, 0, width-1)
+                y_min, y_max = torch.clamp(y_min, 0, height-1), torch.clamp(y_max, 0, height-1)
+
+                x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
+                dolphin_img = img[:, y_min:y_max, x_min:x_max]
+                
+                try:
+                    dolphin_img = self.resize(dolphin_img)
+                except RuntimeError:
+                    
+                    dolphin_img = img
+                    dolphin_img = self.resize(img)
+                    
+                    # Something to be aware of
+                    #print({clip[i]['img_path']}, {clip[i]['boxes']}, t_id, '', bb_loc)
+                    #print(dolphin_img.shape)
+                    #print(x_min, x_max, y_min, y_max )
+                    #input()
+
+                track_id[t_id]['imgsnapshot'][i] = dolphin_img
 
         return track_id
             
@@ -213,8 +254,6 @@ def get_transform(train):
         transforms.append(T.RandomHorizontalFlip(0.5))
 
     return T.Compose(transforms)
-
-
 
 if __name__ == '__main__':
     check = DOLPHINVIDEOVRD('../DOLPHIN/', set='Train', transforms=get_transform(False))

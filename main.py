@@ -95,22 +95,22 @@ def main():
     try:
         dataset = DOLPHIN(data_path=dp_args.data_path,
                           set='Train',
-                          mode='general',
+                          mode='specific',
                           transforms=get_transform(train=True))
 
         dataset_test = DOLPHIN(data_path=dp_args.data_path,
                                set='Test',
-                               mode='general',
+                               mode='specific',
                                transforms=get_transform(train=False))
 
         train_vrd = DOLPHINVIDEOVRD(data_path=dp_args.data_path,
                                     set='Train',
-                                    mode='general',
+                                    mode='specific',
                                     transforms=get_transform(train=False))
 
         test_vrd = DOLPHINVIDEOVRD(data_path=dp_args.data_path,
                                     set='Train',
-                                    mode='general',
+                                    mode='specific',
                                     transforms=get_transform(train=False))
 
 
@@ -121,22 +121,22 @@ def main():
 
         dataset = DOLPHIN(data_path=dp_args.data_path,
                           set='Train',
-                          mode='general',
+                          mode='specific',
                           transforms=get_transform(train=True))
 
         dataset_test = DOLPHIN(data_path=dp_args.data_path,
                                set='Test',
-                               mode='general',
+                               mode='specific',
                                transforms=get_transform(train=False))
 
         train_vrd = DOLPHINVIDEOVRD(data_path=dp_args.data_path,
                                     set='Train',
-                                    mode='general',
+                                    mode='specific',
                                     transforms=get_transform(train=False))
 
         test_vrd = DOLPHINVIDEOVRD(data_path=dp_args.data_path,
                                     set='Train',
-                                    mode='general',
+                                    mode='specific',
                                     transforms=get_transform(train=False))
 
 

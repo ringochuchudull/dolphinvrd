@@ -119,25 +119,30 @@ def main():
     running_loss = 0.0
     # Single Epoch
     for _, motion in tqdm(data_loader):
-        # Each clip has a segment size = 30        
+        # Each clip has a segment size = 15        
         
         optimizer.zero_grad()
 
         try:
             # Batch Size 1 at a time
             for did, blob in motion.items():
-                
+            
                 if did == 5:  # Skip motions of pipe as they are unlabelled
                     continue
                 
-                gt_class = blob['motion'].to(DEVICE)
-                pred_class = MODEL(blob['traj'].to(DEVICE))
+                dense_traj = blob['traj'].to(DEVICE)
+                video_clip = blob['imgsnapshot'].to(DEVICE)
 
-                loss = criterion(pred_class, torch.argmax(gt_class, dim=1))
-                loss.backward()
-                optimizer.step()
+                print(dense_traj.shape, video_clip.shape); input()
+                # Left over
+                #gt_class = blob['motion'].to(DEVICE)
+                #pred_class = MODEL(blob['traj'].to(DEVICE)
 
-            running_loss += loss.item()
+                #loss = criterion(pred_class, torch.argmax(gt_class, dim=1))
+                #loss.backward()
+                #optimizer.step()
+
+            #running_loss += loss.item()
         except Exception as e:
             print(e)
 

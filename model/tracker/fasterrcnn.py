@@ -33,9 +33,8 @@ class FRCNN_FPN(FasterRCNN):
         pass
 
     def get_RoI_Pool(self):
-
-        fuck = self.roi_heads
-        print(fuck)
+        f = self.roi_heads
+        print(f)
 
     def predict_boxes(self, boxes):
         device = list(self.parameters())[0].device
