@@ -2,15 +2,63 @@
 Modifiy from IBM research github repo:
 https://github.com/IBM/action-recognition-pytorch/blob/master/models/threed_models/s3d_resnet.py
 '''
-
-
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 import torch.nn.functional as F
 
-from models.inflate_from_2d_model import inflate_from_2d_model
+from collections import OrderedDict
+from torch.autograd import Variable
+
+def inflate_from_2d_model(state_dict_2d, state_dict_3d, skipped_keys=None, inflated_dim=2):
+
+    if skipped_keys is None:
+        skipped_keys = []
+
+    missed_keys = []
+    new_keys = []
+    for old_key in state_dict_2d.keys():
+        if old_key not in state_dict_3d.keys():
+            missed_keys.append(old_key)
+    for new_key in state_dict_3d.keys():
+        if new_key not in state_dict_2d.keys():
+            new_keys.append(new_key)
+    print("Missed tensors: {}".format(missed_keys))
+    print("New tensors: {}".format(new_keys))
+    print("Following layers will be skipped: {}".format(skipped_keys))
+
+    state_d = OrderedDict()
+    unused_layers = [k for k in state_dict_2d.keys()]
+    uninitialized_layers = [k for k in state_dict_3d.keys()]
+    initialized_layers = []
+    for key, value in state_dict_2d.items():
+        skipped = False
+        for skipped_key in skipped_keys:
+            if skipped_key in key:
+                skipped = True
+                break
+        if skipped:
+            continue
+        new_value = value
+        # only inflated conv's weights
+        if key in state_dict_3d:
+            if value.ndimension() == 4 and 'weight' in key:
+                value = torch.unsqueeze(value, inflated_dim)
+                repeated_dim = torch.ones(state_dict_3d[key].ndimension(), dtype=torch.int)
+                repeated_dim[inflated_dim] = state_dict_3d[key].size(inflated_dim)
+                new_value = value.repeat(repeated_dim.tolist())
+            state_d[key] = new_value
+            initialized_layers.append(key)
+            uninitialized_layers.remove(key)
+            unused_layers.remove(key)
+
+    print("Initialized layers: {}".format(initialized_layers))
+    print("Uninitialized layers: {}".format(uninitialized_layers))
+    print("Unused layers: {}".format(unused_layers))
+
+    return state_d
+
 
 __all__ = ['s3d_resnet']
 
@@ -140,8 +188,8 @@ class STBottleneck(nn.Module):
 
 
 class S3D_ResNet(nn.Module):
-    def __init__(self, depth, num_classes=1000, dropout=0.5, without_t_stride=False,
-                 zero_init_residual=False, dw_t_conv=False):
+    def __init__(self, depth=18, num_classes=1000, dropout=0.5, without_t_stride=False,
+                 zero_init_residual=False, dw_t_conv=False, input_size=4, hidden_layer_size=512, output_size=9):
         super(S3D_ResNet, self).__init__()
         layers = {
             18: [2, 2, 2, 2],
@@ -166,7 +214,21 @@ class S3D_ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = nn.Linear(512 * block.expansion, 512)
+        self.fc2 = nn.Linear(512, num_classes)
+
+        self.fc_concat = nn.Linear((512 * block.expansion)+2000, num_classes)
+
+        #### Recurrent Branch
+        self.hidden_layer_size = hidden_layer_size
+        self.drop = nn.Dropout(p=0.5)
+        self.num_layers = 3
+        self.lstm = nn.LSTM(input_size, hidden_layer_size, batch_first=True, num_layers=self.num_layers, dropout=0.5)
+
+        self.W_s1 = nn.Linear(hidden_layer_size, 350)
+        self.W_s2 = nn.Linear(350, 30)
+        self.fc_layer = nn.Linear(30*1*hidden_layer_size, 2000)
+        self.label = nn.Linear(2000, output_size)
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
@@ -177,6 +239,21 @@ class S3D_ResNet(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.001)
                 nn.init.constant_(m.bias, 0)
+            
+            elif isinstance(m, nn.LSTM):
+                for name, param in m.named_parameters():
+                    if 'weight_ih' in name:
+                        torch.nn.init.xavier_uniform_(param.data)
+                    elif 'weight_hh' in name:
+                        torch.nn.init.orthogonal_(param.data)
+
+            elif isinstance(m, nn.GRU):
+                for name, param in m.named_parameters():
+                    if 'weight_ih' in name:
+                        torch.nn.init.xavier_uniform_(param.data)
+                    elif 'weight_hh' in name:
+                        torch.nn.init.orthogonal_(param.data)
+
         # Zero-initialize the last BN in each residual branch,
         # so that the residual branch starts with zeros, and each residual block behaves like an identity.
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
@@ -186,7 +263,14 @@ class S3D_ResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)
                 elif isinstance(m, STBasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
-    
+
+    def attention_net(self, lstm_output):
+        attn_weight_matrix = self.W_s2(F.tanh(self.W_s1(lstm_output)))
+        attn_weight_matrix = attn_weight_matrix.permute(0, 2, 1)
+        attn_weight_matrix = F.softmax(attn_weight_matrix, dim=2)
+        return attn_weight_matrix
+
+
     def mean(self, modality='rgb'):
         return [0.485, 0.456, 0.406] if modality == 'rgb' else [0.5]
 
@@ -220,8 +304,8 @@ class S3D_ResNet(nn.Module):
             layers.append(block(self.inplanes, planes, padding=1, dw_t_conv=self.dw_t_conv))
 
         return nn.Sequential(*layers)
-    
-    def forward(self, x):
+
+    def forward(self, x, input_seq=None, batch_size=1):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -241,18 +325,36 @@ class S3D_ResNet(nn.Module):
         n, c, nf = x.size()
         x = x.contiguous().view(n * c, -1)
         x = self.dropout(x)
+
+        x1 = torch.mean(x, 0, keepdim=True)
+        x1 = self.fc(x1)
+        
         x = self.fc(x)
+        x = self.fc2(x)
         x = x.view(n, c, -1)
         # N x num_classes x ((F/8)-1)
         logits = torch.mean(x, 1)
 
+        # Temporal Brench
+        h_0 = Variable(torch.zeros(self.num_layers, batch_size, self.hidden_layer_size).cuda())
+        c_0 = Variable(torch.zeros(self.num_layers, batch_size, self.hidden_layer_size).cuda())
+        output, (h_n, c_n) = self.lstm(input_seq, (h_0, c_0))
+        attn_weight_matrix = self.attention_net(output)
+        hidden_matrix = torch.bmm(attn_weight_matrix, output)    
+        x2 = self.fc_layer(hidden_matrix.view(-1, hidden_matrix.size()[1]*hidden_matrix.size()[2]))
+
+        # Combine
+
+        #print(x1.size(), x2.size())
+        out = torch.cat((x1,x2), dim=1)
+        logits = self.fc_concat(out)
         return logits
 
 
-def s3d_resnet(depth, num_classes=9, dropout=0.5, without_t_stride=False, dw_t_conv=False):
-
-    model = S3D_ResNet(depth=9, num_classes=num_classes, dropout=dropout,
-                       without_t_stride = without_t_stride, dw_t_conv=dw_t_conv)
+def s3d_resnet():
+    depth=18
+    model = S3D_ResNet(depth=18, num_classes=9, dropout=0.5,
+                        without_t_stride=False, dw_t_conv=False)
 
     new_model_state_dict = model.state_dict()
     state_dict = model_zoo.load_url(model_urls['resnet{}'.format(depth)],

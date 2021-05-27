@@ -182,7 +182,7 @@ class DOLPHINVIDEOVRD(DOLPHIN):
     
     def batchify_single(self, clip):    
         # torch.tensor([0, 0, 0, 0, 0, 0 ,0 ,0 ,0]
-        track_id = {i:{'traj':torch.zeros((self.window_size, 4)), 'motion':None, 'imgsnapshot':torch.zeros((self.window_size, 3, self.single_dolphin_image_resize, self.single_dolphin_image_resize))} for i in range(1,6)}
+        track_id = {i:{'traj':torch.zeros((self.window_size, 4)), 'motion':None, 'imgsnapshot':torch.zeros((3, self.window_size, self.single_dolphin_image_resize, self.single_dolphin_image_resize))} for i in range(1,6)}
 
         assert len(clip) == self.window_size
         for i in range(len(clip)):        
@@ -224,13 +224,7 @@ class DOLPHINVIDEOVRD(DOLPHIN):
                     dolphin_img = img
                     dolphin_img = self.resize(img)
                     
-                    # Something to be aware of
-                    #print({clip[i]['img_path']}, {clip[i]['boxes']}, t_id, '', bb_loc)
-                    #print(dolphin_img.shape)
-                    #print(x_min, x_max, y_min, y_max )
-                    #input()
-
-                track_id[t_id]['imgsnapshot'][i] = dolphin_img
+                track_id[t_id]['imgsnapshot'][:, i, :, :] = dolphin_img
 
         return track_id
             
