@@ -85,7 +85,7 @@ def plot_traj(clip, traj, motion=None):
             x_min, y_min, x_max, y_max = [ int(b.item()) for b in bbox]
             
             this_img = clip_np[j]
-            this_img = _cv2.rectangle(this_img, (x_min, y_min), (x_max, y_max), (255, 255, 0), 1)
+            this_img = _cv2.rectangle(this_img, (x_min, y_min), (x_max, y_max), (255, 255, 0), 2)
 
             font = _cv2.FONT_HERSHEY_SIMPLEX
             centre_x = int(x_min/2 + x_max/2)
@@ -99,7 +99,6 @@ def plot_traj(clip, traj, motion=None):
             clip_np[j] = this_img
 
     return clip_np
-
 
 
 def _rgb_to_bgr(color):

@@ -3,3 +3,4 @@ python-opencv==4.2.0
 pycocotools
 tqdm
 motmetrics
+sklearn

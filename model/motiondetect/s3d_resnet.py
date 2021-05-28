@@ -265,7 +265,7 @@ class S3D_ResNet(nn.Module):
                     nn.init.constant_(m.bn2.weight, 0)
 
     def attention_net(self, lstm_output):
-        attn_weight_matrix = self.W_s2(F.tanh(self.W_s1(lstm_output)))
+        attn_weight_matrix = self.W_s2(torch.tanh(self.W_s1(lstm_output)))
         attn_weight_matrix = attn_weight_matrix.permute(0, 2, 1)
         attn_weight_matrix = F.softmax(attn_weight_matrix, dim=2)
         return attn_weight_matrix

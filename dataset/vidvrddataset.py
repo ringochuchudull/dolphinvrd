@@ -89,6 +89,28 @@ if __name__ == '__main__':
         json.dump(gts, fout, separators=(',', ':'))
 
 
+class GeneralDataset(torch.utils.data.Dataset):
+
+    def __init__(self, data_path, set, transforms=None, _vis_threshold=0.2):
+
+        # load all image files, sorting them to
+        # ensure that they are aligned
+        self._img_paths = []
+        self._bbs_info = []
+
+        self.root = data_path
+        assert os.path.exists(self.root), "Your -->  --data_path <-- got problem"
+
+    @property
+    def num_classes(self):
+        return len(self._classes)
+
+    def __getitem__(self, idx):
+        return None
+
+    def __str__(self):
+        return 'This is General Detection LOADER'
+
 class VideoVRDDataset(GeneralDataset):
 
     def __init__(self, data_path,
