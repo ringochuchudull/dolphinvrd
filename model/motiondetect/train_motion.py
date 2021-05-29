@@ -58,44 +58,48 @@ def main():
     # Single Epoch
 
     dl_len = len(data_loader)
-    for _, motion in tqdm(data_loader):
 
-        # Each clip has a segment size = 15                
-        optimizer.zero_grad()
-        try:
-            # Batch Size 1 at a time
-            for did, blob in motion.items():
-            
-                if did == 5:  # Skip motions of pipe as they are unlabelled
-                    continue
+    for epoch in range(epoch_start, 12):
+        for _, motion in tqdm(data_loader):
+
+            # Each clip has a segment size = 15                
+            optimizer.zero_grad()
+            try:
+                # Batch Size 1 at a time
+                for did, blob in motion.items():
                 
-                dense_traj = blob['traj'].to(DEVICE)
-                video_clip = blob['imgsnapshot'].to(DEVICE)
-                gt_class = blob['motion'].to(DEVICE)
+                    if did == 5:  # Skip motions of pipe as they are unlabelled
+                        continue
+                    
+                    dense_traj = blob['traj'].to(DEVICE)
+                    video_clip = blob['imgsnapshot'].to(DEVICE)
+                    gt_class = blob['motion'].to(DEVICE)
 
-                pred_0 = SPATIAL_MODEL(video_clip, dense_traj)
-                #writer.add_graph(SPATIAL_MODEL, (video_clip, dense_traj))
+                    pred_0 = SPATIAL_MODEL(video_clip, dense_traj)
+                    #writer.add_graph(SPATIAL_MODEL, (video_clip, dense_traj))
 
-                loss = criterion(pred_0, torch.argmax(gt_class, dim=1))
-                loss.backward()
-                optimizer.step()
+                    loss = criterion(pred_0, torch.argmax(gt_class, dim=1))
+                    loss.backward()
+                    optimizer.step()
 
-                running_loss += loss.item()/dl_len
-            #writer.add_scalar('Accuracy/train', running_loss, 0)    
+                    running_loss += loss.item()/dl_len
+                #writer.add_scalar('Accuracy/train', running_loss, 0)    
 
-        except Exception as e:
-            print(e, '\nSaving model dictionary due to Key board interupt or else')
+            except Exception as e:
+                print(e, '\nSaving model dictionary due to Key board interupt or else')
+                torch.save({
+                            'epoch': epoch,
+                            'model_state_dict': SPATIAL_MODEL.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict()
+                            }, os.path.join(git_root(), 'model', 'param', f'motiondetect.pth'))
+
+            # Training accuracy
+            
             torch.save({
-                        'epoch': 0,
+                        'epoch': epoch,
                         'model_state_dict': SPATIAL_MODEL.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict()
                         }, os.path.join(git_root(), 'model', 'param', f'motiondetect.pth'))
-
-        torch.save({
-                    'epoch': 0,
-                    'model_state_dict': SPATIAL_MODEL.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict()
-                    }, os.path.join(git_root(), 'model', 'param', f'motiondetect.pth'))
 
 import random
 from model.helper.utility import plot_traj
