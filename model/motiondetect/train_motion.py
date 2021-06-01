@@ -15,8 +15,28 @@ from s3d_resnet import s3d_resnet
 from sklearn.metrics import classification_report
 
 #from tensorboardX import SummaryWriter
-
 from tqdm import tqdm
+
+
+import random
+from model.helper.utility import plot_traj
+import cv2
+def plot():
+    dp = DolphinParser()
+    dp_args = dp.parse()
+
+    dataset = DOLPHINVIDEOVRD(dp_args.data_path, set='Train', mode='specific', transforms=get_transform(False))
+    n = [0, 1]
+    for idx in n:
+        
+        if not os.path.exists(os.path.join('imgfolder', f'{str(idx).zfill(6)}')):
+            os.mkdir(os.path.join('imgfolder', f'{str(idx).zfill(6)}'))
+        
+        clip, traj = dataset[idx]
+        frames = plot_traj(clip, traj)
+        for j, f in tqdm(enumerate(frames)):
+            #cv2.imwrite(f'./imgfolder/{str(j).zfill(6)}.png', f)
+            cv2.imwrite(os.path.join('imgfolder', f'{str(idx).zfill(6)}', f'{str(j).zfill(6)}.png'), f)
 
 def make_model():
     TEMPORAL_MODEL = LSTM()
@@ -52,7 +72,15 @@ class Meter():
     def __str__(self):
         print('Calculating classification accuracy')
         self.get_classification_report()
-        return 'Meter Class'
+        return f'Meter Class, Total number of classification {self.length}'
+
+
+def adjust_learning_rate(optimizer, epoch, lr):
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    lr = lr * (0.5 ** (epoch // 5))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
 
 def main():
 
@@ -63,8 +91,8 @@ def main():
     sampler_train, need_shuffle = None, True
 
     #if True:
-    #     sampler_train = torch.utils.data.SubsetRandomSampler(list(range(0, 10)) )
-    #     need_shuffle = False        
+    #    sampler_train = torch.utils.data.SubsetRandomSampler(list(range(0, 10)) )
+    #    need_shuffle = False        
 
     data_loader = torch.utils.data.DataLoader(dataset_train, batch_size=1, shuffle=need_shuffle, sampler=sampler_train)
 
@@ -83,7 +111,7 @@ def main():
     #with SummaryWriter(comment='SPATIAL_MODEL') as w:
     #    w.add_graph(SPATIAL_MODEL)
     try:
-        modelparam = torch.load(os.path.join(git_root(),'model','param','motiondetect.pth'), map_location=DEVICE)    
+        modelparam = torch.load(os.path.join(git_root(),'model','param','motiondetect_001.pth'), map_location=DEVICE)    
         SPATIAL_MODEL.load_state_dict(modelparam['model_state_dict'])
         optimizer.load_state_dict(modelparam['optimizer_state_dict'])
         epoch_start = modelparam['epoch']
@@ -96,9 +124,10 @@ def main():
         
         meter = Meter()
         running_loss = 0.0
+        adjust_learning_rate(optimizer, epoch, 0.001)
         for _, motion in tqdm(data_loader):
             # Each clip has a segment size = 15                
-            optimizer.zero_grad()
+            
             try:
                 # Batch Size 1 at a time
                 for did, blob in motion.items():
@@ -112,13 +141,14 @@ def main():
 
                     pred_0 = SPATIAL_MODEL(video_clip, dense_traj)
                     #writer.add_graph(SPATIAL_MODEL, (video_clip, dense_traj))
-
+                    
+                    optimizer.zero_grad()
                     loss = criterion(pred_0, torch.argmax(gt_class, dim=1))
-
                     loss.backward()
                     optimizer.step()
 
-                    meter.update(torch.torch.argmax(pred_0, dim=1).item(), torch.torch.argmax(pred_0, dim=1).item(), loss.item())
+                    #print(torch.argmax(pred_0, dim=1).item(), torch.argmax(gt_class, dim=1).item())
+                    meter.update(torch.argmax(pred_0, dim=1).item(), torch.argmax(gt_class, dim=1).item(), loss.item())
                 #writer.add_scalar('Accuracy/train', running_loss, 0)    
 
             except Exception as e:
@@ -128,41 +158,16 @@ def main():
                             'model_state_dict': SPATIAL_MODEL.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict()
                             }, os.path.join(git_root(), 'model', 'param', f'motiondetect.pth'))
-
         
         # Training accuracy
         print(f'Running loss at {epoch}: {running_loss}')
         print(meter)
-
 
         torch.save({
                     'epoch': epoch,
                     'model_state_dict': SPATIAL_MODEL.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict()
                     }, os.path.join(git_root(), 'model', 'param', f'motiondetect_{str(epoch).zfill(3)}.pth'))
-
-import random
-from model.helper.utility import plot_traj
-import cv2
-
-def plot():
-    dp = DolphinParser()
-    dp_args = dp.parse()
-
-    dataset = DOLPHINVIDEOVRD(dp_args.data_path, set='Train', mode='specific', transforms=get_transform(False))
-
-    #n = [random.randint(0, 1) for _ in range(1, len(dataset))]
-    n = [0, 1]
-    for idx in n:
-        
-        if not os.path.exists(os.path.join('imgfolder', f'{str(idx).zfill(6)}')):
-            os.mkdir(os.path.join('imgfolder', f'{str(idx).zfill(6)}'))
-        
-        clip, traj = dataset[idx]
-        frames = plot_traj(clip, traj)
-        for j, f in tqdm(enumerate(frames)):
-            #cv2.imwrite(f'./imgfolder/{str(j).zfill(6)}.png', f)
-            cv2.imwrite(os.path.join('imgfolder', f'{str(idx).zfill(6)}', f'{str(j).zfill(6)}.png'), f)
 
 if __name__ == '__main__':
     print('Run motion detection training script')

@@ -12,6 +12,8 @@ from tqdm import tqdm
 from model.tracker.tracktor.network import FRCNN_FPN
 from model.tracker.tracktor.tracktor import Tracker
 
+from model.motiondetect.s3d_resnet import s3d_resnet
+
 import cv2 
 def inference():
     pass
@@ -19,12 +21,10 @@ def inference():
 def eval():
     pass
 
-def train(dataset, tracker):
+def train(dataset, tracker, motiondetect):
     # Run Detection
-
     train_vrd, test_vrd = dataset
-    #data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
-    
+
     train_vrd_dataloader = torch.utils.data.DataLoader(train_vrd, batch_size=1, shuffle=False)
     test_vrd_dataloader = torch.utils.data.DataLoader(test_vrd, batch_size=1, shuffle=False)
 
@@ -47,11 +47,13 @@ def train(dataset, tracker):
                 tracker.step(blob, idx=ws+1)
         traj = tracker.get_results()
 
+        #motiondetect
+        '''
         # Module 2 - Pair Prosoal from Graphs
         visualise = plot_traj(clip, traj, motion)
         for i, pic in enumerate(visualise):
             cv2.imwrite(str(i).zfill(6)+'.jpg', pic)
-
+        '''
 
 def main():
     dp = DolphinParser()
@@ -59,10 +61,12 @@ def main():
 
     DEVICE = cpu_or_gpu(dp_args.device)
 
+    '''
     torch.manual_seed(1234)
     torch.cuda.manual_seed(1234)
     np.random.seed(1234)
     torch.backends.cudnn.deterministic = True
+    '''
 
     print("+Initializing object detector+")
 
@@ -90,6 +94,9 @@ def main():
         except yaml.YAMLError as exc:
             print(exc)
 
+
+    print("+Initializing Detection Motion+")
+    motion_model = s3d_resnet().to(DEVICE)
 
     print('+Create Data Loader')
     try:
@@ -140,7 +147,7 @@ def main():
                                     transforms=get_transform(train=False))
 
 
-    train((train_vrd, test_vrd), tracker)
+    train((train_vrd, test_vrd), tracker, motion_model)
 
 
 
