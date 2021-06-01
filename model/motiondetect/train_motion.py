@@ -16,16 +16,43 @@ from sklearn.metrics import classification_report
 
 #from tensorboardX import SummaryWriter
 
-
 from tqdm import tqdm
-
 
 def make_model():
     TEMPORAL_MODEL = LSTM()
     SPATIAL_MODEL = s3d_resnet()
-
     return TEMPORAL_MODEL, SPATIAL_MODEL
 
+class Meter():
+
+    def __init__(self):
+        self.length = 0
+        self.ground_truth = []
+        self.predict = []
+        self.loss = []
+
+    def reset(self):
+        self.length = 0
+        self.ground_truth = []
+        self.predict = []
+        self.loss = []
+
+    def update(self, pred, gt, loss):
+        self.ground_truth.append(gt)
+        self.predict.append(pred)
+        self.loss.append(loss)
+        self.length += 1
+    
+
+    def get_classification_report(self):
+        label = ['Coop', 'Eat', 'Int', 'Inv', 'Moving', 'Obs', 'Tug', 'Following', 'None']
+        cr = classification_report(self.ground_truth, self.predict)
+        return print(cr)
+
+    def __str__(self):
+        print('Calculating classification accuracy')
+        self.get_classification_report()
+        return 'Meter Class'
 
 def main():
 
@@ -33,13 +60,22 @@ def main():
     dp_args = dp.parse()
 
     dataset_train = DOLPHINVIDEOVRD(dp_args.data_path, set='Train', mode='specific', transforms=get_transform(False))
-    data_loader = torch.utils.data.DataLoader(dataset_train, batch_size=1, shuffle=True)
+    sampler_train, need_shuffle = None, True
+
+    #if True:
+    #     sampler_train = torch.utils.data.SubsetRandomSampler(list(range(0, 10)) )
+    #     need_shuffle = False        
+
+    data_loader = torch.utils.data.DataLoader(dataset_train, batch_size=1, shuffle=need_shuffle, sampler=sampler_train)
 
     DEVICE = cpu_or_gpu(dp_args.device)
-    TEMPORAL_MODEL, SPATIAL_MODEL = make_model()
+    if DEVICE is torch.device('cuda'):
+        torch.backends.cudnn.benchmark = True
+
+    _, SPATIAL_MODEL = make_model()
     SPATIAL_MODEL = SPATIAL_MODEL.to(DEVICE)
     
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss().to(DEVICE)
     optimizer = torch.optim.SGD(SPATIAL_MODEL.parameters(), lr=0.001, momentum=0.9)
     
     epoch_start = 1
@@ -54,14 +90,13 @@ def main():
     except:
         print('Model Paramaters do not exist, starting a new model')
 
-    running_loss = 0.0
-    # Single Epoch
-
     dl_len = len(data_loader)
 
     for epoch in range(epoch_start, 12):
+        
+        meter = Meter()
+        running_loss = 0.0
         for _, motion in tqdm(data_loader):
-
             # Each clip has a segment size = 15                
             optimizer.zero_grad()
             try:
@@ -79,10 +114,11 @@ def main():
                     #writer.add_graph(SPATIAL_MODEL, (video_clip, dense_traj))
 
                     loss = criterion(pred_0, torch.argmax(gt_class, dim=1))
+
                     loss.backward()
                     optimizer.step()
 
-                    running_loss += loss.item()/dl_len
+                    meter.update(torch.torch.argmax(pred_0, dim=1).item(), torch.torch.argmax(pred_0, dim=1).item(), loss.item())
                 #writer.add_scalar('Accuracy/train', running_loss, 0)    
 
             except Exception as e:
@@ -93,13 +129,17 @@ def main():
                             'optimizer_state_dict': optimizer.state_dict()
                             }, os.path.join(git_root(), 'model', 'param', f'motiondetect.pth'))
 
-            # Training accuracy
-            
-            torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': SPATIAL_MODEL.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict()
-                        }, os.path.join(git_root(), 'model', 'param', f'motiondetect.pth'))
+        
+        # Training accuracy
+        print(f'Running loss at {epoch}: {running_loss}')
+        print(meter)
+
+
+        torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': SPATIAL_MODEL.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict()
+                    }, os.path.join(git_root(), 'model', 'param', f'motiondetect_{str(epoch).zfill(3)}.pth'))
 
 import random
 from model.helper.utility import plot_traj

@@ -92,7 +92,7 @@ def plot_traj(clip, traj, motion=None):
             centre_y = int(y_min/2 + y_max/2)
             this_img = _cv2.putText(this_img, f'ID: {id}', (centre_x, centre_y), font, 0.7, (255, 255, 0), 2, _cv2.LINE_AA)
             
-            if j >13:
+            if j >13: # Last frame
                 motion =  np.argmax(cood['motion'].data)
                 this_img = _cv2.putText(this_img, f'Motion: {motion}', (centre_x, centre_y+10), font, 0.7, (255, 255, 0), 2, _cv2.LINE_AA)
             
