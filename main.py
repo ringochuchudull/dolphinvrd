@@ -94,7 +94,6 @@ def main():
         except yaml.YAMLError as exc:
             print(exc)
 
-
     print("+Initializing Detection Motion+")
     motion_model = s3d_resnet().to(DEVICE)
 

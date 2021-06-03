@@ -26,7 +26,7 @@ def plot():
     dp_args = dp.parse()
 
     dataset = DOLPHINVIDEOVRD(dp_args.data_path, set='Train', mode='specific', transforms=get_transform(False))
-    n = [0, 1]
+    n = [ i for i in range(0, 1000, 30)]
     for idx in n:
         
         if not os.path.exists(os.path.join('imgfolder', f'{str(idx).zfill(6)}')):
@@ -63,9 +63,14 @@ class Meter():
         self.loss.append(loss)
         self.length += 1
     
+    def get(self, param):
+
+        if param.lower() == 'loss':
+            return sum(self.loss)/self.length
 
     def get_classification_report(self):
         label = ['Coop', 'Eat', 'Int', 'Inv', 'Moving', 'Obs', 'Tug', 'Following', 'None']
+        # https://datascience.stackexchange.com/questions/64441/how-to-interpret-classification-report-of-scikit-learn 
         cr = classification_report(self.ground_truth, self.predict)
         return print(cr)
 
@@ -77,7 +82,7 @@ class Meter():
 
 def adjust_learning_rate(optimizer, epoch, lr):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = lr * (0.5 ** (epoch // 5))
+    lr = lr * (0.5 ** (epoch // 8))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
@@ -104,7 +109,7 @@ def main():
     SPATIAL_MODEL = SPATIAL_MODEL.to(DEVICE)
     
     criterion = nn.CrossEntropyLoss().to(DEVICE)
-    optimizer = torch.optim.SGD(SPATIAL_MODEL.parameters(), lr=0.001, momentum=0.9)
+    optimizer = torch.optim.SGD(SPATIAL_MODEL.parameters(), lr=0.005, momentum=0.9)
     
     epoch_start = 1
     #writer = SummaryWriter('runs/')
@@ -113,7 +118,7 @@ def main():
     try:
         modelparam = torch.load(os.path.join(git_root(),'model','param','motiondetect_001.pth'), map_location=DEVICE)    
         SPATIAL_MODEL.load_state_dict(modelparam['model_state_dict'])
-        optimizer.load_state_dict(modelparam['optimizer_state_dict'])
+        # optimizer.load_state_dict(modelparam['optimizer_state_dict'])
         epoch_start = modelparam['epoch']
     except:
         print('Model Paramaters do not exist, starting a new model')
@@ -139,7 +144,7 @@ def main():
                     video_clip = blob['imgsnapshot'].to(DEVICE)
                     gt_class = blob['motion'].to(DEVICE)
 
-                    pred_0 = SPATIAL_MODEL(video_clip, dense_traj)
+                    pred_0 = SPATIAL_MODEL(video_clip, dense_traj, 1)
                     #writer.add_graph(SPATIAL_MODEL, (video_clip, dense_traj))
                     
                     optimizer.zero_grad()
@@ -160,7 +165,8 @@ def main():
                             }, os.path.join(git_root(), 'model', 'param', f'motiondetect.pth'))
         
         # Training accuracy
-        print(f'Running loss at {epoch}: {running_loss}')
+        loss_value = meter.get('loss')
+        print(f'Running loss at {epoch}: {loss_value}')
         print(meter)
 
         torch.save({
@@ -171,5 +177,5 @@ def main():
 
 if __name__ == '__main__':
     print('Run motion detection training script')
-    main()
-    #plot()
+    #main()
+    plot()

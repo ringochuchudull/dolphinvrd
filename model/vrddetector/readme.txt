@@ -1,1 +1,0 @@
-This folder contains VRD module
