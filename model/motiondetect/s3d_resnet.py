@@ -347,6 +347,7 @@ class S3D_ResNet(nn.Module):
 
         #print(x1.size(), x2.size())
         out = torch.cat((x1,x2), dim=1)
+        out = self.dropout(out)
         logits = self.fc_concat(out)
         return logits
 

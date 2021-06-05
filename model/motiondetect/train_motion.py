@@ -17,7 +17,6 @@ from sklearn.metrics import classification_report
 #from tensorboardX import SummaryWriter
 from tqdm import tqdm
 
-
 import random
 from model.helper.utility import plot_traj
 import cv2
@@ -79,13 +78,35 @@ class Meter():
         self.get_classification_report()
         return f'Meter Class, Total number of classification {self.length}'
 
-
 def adjust_learning_rate(optimizer, epoch, lr):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
     lr = lr * (0.5 ** (epoch // 8))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
+def test(model, dataloader):
+
+    meter = Meter()
+    criterion = nn.CrossEntropyLoss().to(cpu_or_gpu('gpu'))
+    for _, motion in tqdm(dataloader):
+        
+        model.eval()
+        with torch.no_grad():
+            
+            for did, blob in motion.items():
+            
+                if did == 5:  # Skip motions of pipe as they are unlabelled
+                    continue
+                
+                dense_traj = blob['traj'].cuda()
+                video_clip = blob['imgsnapshot'].cuda()
+                gt_class = blob['motion'].cuda()
+
+                pred_0 = model(video_clip, dense_traj, 1)
+                loss = criterion(pred_0, torch.argmax(gt_class, dim=1))
+                meter.update(torch.argmax(pred_0, dim=1).item(), torch.argmax(gt_class, dim=1).item(), loss.item())
+
+    print(meter)
 
 def main():
 
@@ -95,13 +116,16 @@ def main():
     dataset_train = DOLPHINVIDEOVRD(dp_args.data_path, set='Train', mode='specific', transforms=get_transform(False))
     sampler_train, need_shuffle = None, True
 
+    dataset_test = DOLPHINVIDEOVRD(dp_args.data_path, set='Test', mode='specific', transforms=get_transform(False))
     #if True:
     #    sampler_train = torch.utils.data.SubsetRandomSampler(list(range(0, 10)) )
     #    need_shuffle = False        
 
     data_loader = torch.utils.data.DataLoader(dataset_train, batch_size=1, shuffle=need_shuffle, sampler=sampler_train)
+    data_loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=1, shuffle=need_shuffle, sampler=sampler_train)
 
     DEVICE = cpu_or_gpu(dp_args.device)
+
     if DEVICE is torch.device('cuda'):
         torch.backends.cudnn.benchmark = True
 
@@ -116,20 +140,21 @@ def main():
     #with SummaryWriter(comment='SPATIAL_MODEL') as w:
     #    w.add_graph(SPATIAL_MODEL)
     try:
-        modelparam = torch.load(os.path.join(git_root(),'model','param','motiondetect_001.pth'), map_location=DEVICE)    
+        modelparam = torch.load(os.path.join(git_root(),'model','param','motiondetect_015.pth'), map_location=DEVICE)    
         SPATIAL_MODEL.load_state_dict(modelparam['model_state_dict'])
-        # optimizer.load_state_dict(modelparam['optimizer_state_dict'])
+        optimizer.load_state_dict(modelparam['optimizer_state_dict'])
         epoch_start = modelparam['epoch']
     except:
         print('Model Paramaters do not exist, starting a new model')
 
     dl_len = len(data_loader)
 
-    for epoch in range(epoch_start, 12):
-        
+    for epoch in range(epoch_start, 23):
+
+        print(f'Now running epoch {epoch}')
         meter = Meter()
-        running_loss = 0.0
         adjust_learning_rate(optimizer, epoch, 0.001)
+        SPATIAL_MODEL.train()
         for _, motion in tqdm(data_loader):
             # Each clip has a segment size = 15                
             
@@ -164,11 +189,17 @@ def main():
                             'optimizer_state_dict': optimizer.state_dict()
                             }, os.path.join(git_root(), 'model', 'param', f'motiondetect.pth'))
         
+            
+
         # Training accuracy
         loss_value = meter.get('loss')
         print(f'Running loss at {epoch}: {loss_value}')
         print(meter)
+        
 
+        # Test
+        print('Test Set Accuracy')
+        test(SPATIAL_MODEL, data_loader_test)
         torch.save({
                     'epoch': epoch,
                     'model_state_dict': SPATIAL_MODEL.state_dict(),
@@ -177,5 +208,5 @@ def main():
 
 if __name__ == '__main__':
     print('Run motion detection training script')
-    #main()
-    plot()
+    main()
+    #plot()
