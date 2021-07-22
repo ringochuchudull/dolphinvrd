@@ -39,8 +39,7 @@ st.write('# Dolphin Detection')
 
 st.write('#### Select image or video to upload.')
 uploaded_file = st.file_uploader('',
-                                         type=['png', 'jpg', 'jpeg', 'mp4', 'avi'],
-                                         accept_multiple_files=False)
+                                         type=['png', 'jpg', 'jpeg', 'mp4', 'avi'])
 
 
 ## Pull in default image or user-selected image.
@@ -122,10 +121,13 @@ if uploaded_file:
     ax.hist(confidences, bins=10, range=(0.0,1.0))
     st.pyplot(fig)
 
+    agree = st.checkbox('Export JSON File')
+    if agree:
+        st.write('Success')
 
-    form = st.form(key='my-form')
-    submit = form.form_submit_button('Export JSON File')
 
-    if submit:
-        st.write(f'Saved Json file')
+    #form = st.form(key='my-form')
+    #submit = form.form_submit_button('Export JSON File')
 
+    #if submit:
+    #    st.write(f'Saved Json file')
