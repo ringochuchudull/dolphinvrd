@@ -44,7 +44,7 @@ uploaded_file = st.file_uploader('',
 
 
 ## Pull in default image or user-selected image.
-uploaded_file = 'example/000000.gif'   # 1/000000.png'
+#uploaded_file = 'example/000000.gif'   # 1/000000.png'
 #uploaded_file = 'example/000001/000000.png'   # 1/000000.png'
 
 if uploaded_file is None:
@@ -84,49 +84,48 @@ contents = file_.read()
 data_url = base64.b64encode(contents).decode("utf-8")
 file_.close()
 
-st.markdown(
-    f'<img src="data:image/gif;base64,{data_url}" alt="alt gif">',
-    unsafe_allow_html=True
-)
 
-## Construct the URL to retrieve JSON.
-upload_url = ''.join([
-    'https://infer.roboflow.com/rf-bccd-bkpj9--1',
-    '?access_token=vbIBKNgIXqAQ'
-])
+if uploaded_file:
+    st.markdown(
+        f'<img src="data:image/gif;base64,{data_url}" alt="alt gif">',
+        unsafe_allow_html=True
+    )
 
-## POST to the API.
-r = requests.post(upload_url,
-                  data=img_str,
-                  headers={
-    'Content-Type': 'application/x-www-form-urlencoded'
-})
+    ## Construct the URL to retrieve JSON.
+    upload_url = ''.join([
+        'https://infer.roboflow.com/rf-bccd-bkpj9--1',
+        '?access_token=vbIBKNgIXqAQ'
+    ])
 
-## Save the JSON.
-output_dict = r.json()
+    ## POST to the API.
+    r = requests.post(upload_url,
+                      data=img_str,
+                      headers={
+        'Content-Type': 'application/x-www-form-urlencoded'
+    })
 
-## Generate list of confidences.
-#onfidences = [box['confidence'] for box in output_dict['predictions']]
-confidences = [0.7, 0.6, 0.5]
+    ## Save the JSON.
+    output_dict = r.json()
 
-## Summary statistics section in main app.
-st.write('### Summary Statistics')
-st.write(f'Number of Bounding Boxes (ignoring overlap thresholds): {len(confidences)}')
-st.write(f'Average Confidence Level of Bounding Boxes: {(np.round(np.mean(confidences),4))}')
+    ## Generate list of confidences.
+    #onfidences = [box['confidence'] for box in output_dict['predictions']]
+    confidences = [0.7, 0.6, 0.5]
 
-## Histogram in main app.
-st.write('### Histogram of Confidence Levels')
-fig, ax = plt.subplots()
-ax.hist(confidences, bins=10, range=(0.0,1.0))
-st.pyplot(fig)
+    ## Summary statistics section in main app.
+    st.write('### Summary Statistics')
+    st.write(f'Number of Bounding Boxes (ignoring overlap thresholds): {len(confidences)}')
+    st.write(f'Average Confidence Level of Bounding Boxes: {(np.round(np.mean(confidences),4))}')
+
+    ## Histogram in main app.
+    st.write('### Histogram of Confidence Levels')
+    fig, ax = plt.subplots()
+    ax.hist(confidences, bins=10, range=(0.0,1.0))
+    st.pyplot(fig)
 
 
-form = st.form(key='my-form')
-submit = form.form_submit_button('Export JSON File')
+    form = st.form(key='my-form')
+    submit = form.form_submit_button('Export JSON File')
 
-if submit:
-    st.write(f'Saved Json file')
+    if submit:
+        st.write(f'Saved Json file')
 
-## Display the JSON in main app.
-st.write('### JSON Output')
-st.write(r.json())
