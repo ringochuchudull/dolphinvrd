@@ -84,6 +84,12 @@ data_url = base64.b64encode(contents).decode("utf-8")
 file_.close()
 
 
+motionfile_ = open("example/motionplot.gif", "rb")
+morioncontents = motionfile_.read()
+motion_data_url = base64.b64encode(morioncontents).decode("utf-8")
+motionfile_.close()
+
+
 if uploaded_file:
     st.markdown(
         f'<img src="data:image/gif;base64,{data_url}" alt="alt gif">',
@@ -115,6 +121,11 @@ if uploaded_file:
     st.write(f'Number of Bounding Boxes (ignoring overlap thresholds): {len(confidences)}')
     st.write(f'Average Confidence Level of Bounding Boxes: {(np.round(np.mean(confidences),4))}')
 
+    st.markdown(
+        f'<img src="data:image/gif;base64,{motion_data_url}" alt="alt gif">',
+        unsafe_allow_html=True
+    )
+    
     ## Histogram in main app.
     st.write('### Histogram of Confidence Levels')
     fig, ax = plt.subplots()
