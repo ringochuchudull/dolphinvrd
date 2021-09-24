@@ -4,3 +4,4 @@ pycocotools
 tqdm
 motmetrics
 sklearn
+matplotlib
