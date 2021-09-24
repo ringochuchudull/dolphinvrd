@@ -1,5 +1,5 @@
 numpy
-python-opencv==4.2.0
+python-opencv
 pycocotools
 tqdm
 motmetrics
