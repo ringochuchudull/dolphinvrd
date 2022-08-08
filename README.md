@@ -1,4 +1,4 @@
-# Detecting Hidden Relationship between Objects in Tracking Scenarios (Provisional, Subject to change)
+# Detecting Dolphin Behaviour and Tracking Position
 
 ### How to use it
 
